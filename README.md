@@ -46,12 +46,12 @@ La collecte, le dédoublonnage et les filtres appartiennent à `radar`. Les troi
 
 | Module | Rôle | Statut |
 |---|---|---|
-| `radar` | Veille quotidienne des offres, sans LLM | Prévu |
+| `radar` | Veille quotidienne des offres, sans LLM | En cours (squelette du projet seulement) |
 | `match` | Score offre/CV en 3 étages, évaluation precision@k | Prévu |
 | `cv` | CV et lettre adaptés, packagés en Agent Skill | Prévu |
 | `agent` | Agent LangChain, validation humaine avant action | Prévu |
 
-Aucun module n'est encore implémenté. Ce tableau sera mis à jour à chaque avancée réelle.
+Aucun module n'est encore fonctionnel : `radar` n'a pour l'instant que son squelette (configuration, outillage, CI). Ce tableau sera mis à jour à chaque avancée réelle.
 
 ## Démarrage rapide
 
@@ -60,8 +60,7 @@ Aucun module n'est encore implémenté. Ce tableau sera mis à jour à chaque av
 ```bash
 git clone https://github.com/HLeviel/vigie.git
 cd vigie
-python -m venv .venv && source .venv/bin/activate
-pip install -e .
+uv sync
 cp .env.example .env
 ```
 
@@ -69,12 +68,13 @@ Variables d'environnement (voir [`.env.example`](.env.example)) :
 
 | Variable | Usage |
 |---|---|
-| `FRANCE_TRAVAIL_CLIENT_ID`, `FRANCE_TRAVAIL_CLIENT_SECRET` | API France Travail |
-| `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` | API Adzuna |
-| `RADAR_ENABLE_JOBSPY` | Active JobSpy (`false` par défaut) |
-| `ANTHROPIC_API_KEY`, `EMBEDDINGS_MODEL`, `MATCH_TOP_K` | Étages embeddings et LLM de `match` |
-| `PROFILE_PATH` | Profil utilisé (fictif par défaut) |
-| `AWS_REGION`, `DYNAMODB_TABLE` | Phase serverless |
+| `FT_CLIENT_ID`, `FT_CLIENT_SECRET` | API France Travail |
+| `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` | API Adzuna (lot M2) |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `DIGEST_TO` | Envoi du digest (lot M2) |
+| `VIGIE_STATE_BUCKET` | Bucket S3 privé de l'état (lot M2) |
+| `VIGIE_RADAR_CONFIG` | Critères de recherche réels, hors dépôt (lot M2) |
+
+Les secrets sont lus uniquement par `src/vigie/settings.py`. Le squelette de ce chargement existe ; le reste de `radar` reste à écrire.
 
 Le lancement (`radar`, puis `match`) sera documenté quand le premier module existera.
 

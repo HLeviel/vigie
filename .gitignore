@@ -1,0 +1,22 @@
+# Secrets et données personnelles : ne jamais committer
+.env
+.env.*
+!.env.example
+config/radar.yaml
+*.db
+*.sqlite
+digest*.html
+digest*.md
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
