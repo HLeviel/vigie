@@ -120,18 +120,30 @@ def _to_float(raw: str) -> float | None:
         return None
 
 
+_MONTHS_RE = re.compile(r"sur\s+(\d+(?:[.,]\d+)?)\s*mois", re.IGNORECASE)
+
+
 def parse_salary(label: str | None) -> tuple[float | None, float | None]:
     """Extrait (min, max) annuels bruts en euros d'un libellé de salaire.
 
     Formats reconnus : « Annuel de 45000 Euros à 55000 Euros », « Mensuel de 3000 Euros »
-    (multiplié par 12). Tout autre format (horaire, texte libre) donne ``(None, None)``.
+    (multiplié par 12, ou par N si le libellé indique « sur N mois », N entre 1 et 24).
+    Tout autre format (horaire, texte libre, N hors bornes) donne ``(None, None)``.
     """
     if not label:
         return None, None
     match = _SALARY_RE.search(label)
     if not match:
         return None, None
-    factor = 12 if match.group("period").lower() == "mensuel" else 1
+    factor = 1.0
+    if match.group("period").lower() == "mensuel":
+        factor = 12.0
+        months = _MONTHS_RE.search(label)
+        if months:
+            n = _to_float(months.group(1))
+            if n is None or not 1 <= n <= 24:
+                return None, None
+            factor = n
     low = _to_float(match.group(2))
     high = _to_float(match.group(3)) if match.group(3) else low
     if low is None or high is None:
@@ -197,3 +209,34 @@ def is_suspicious(text: str) -> bool:
     Heuristique de signalement uniquement : le traitement complet relève de ``match``.
     """
     return bool(_INVISIBLE_RE.search(text) or _INJECTION_RE.search(text))
+
+
+# --- Télétravail ---------------------------------------------------------------------------
+
+_REMOTE_PATTERNS: dict[str, re.Pattern[str]] = {
+    "FULL": re.compile(
+        r"100\s*%\s*(?:en\s+)?(?:teletravail|remote)"
+        r"|teletravail\s+(?:a\s+)?100\s*%"
+        r"|full[\s-]?remote"
+    ),
+    "PARTIAL": re.compile(
+        r"teletravail\s+partiel|\bhybrid(?:e|s)?\b|\d+\s+jours?\s+(?:de|en|par\s+semaine\s+de)\s+teletravail"
+    ),
+    "NONE": re.compile(
+        r"pas\s+de\s+teletravail(?!\s+(?:complet|total))"
+        r"|sans\s+teletravail"
+        r"|aucun\s+teletravail"
+        r"|teletravail\s+(?:impossible|non\s+autorise)"
+    ),
+}
+
+
+def parse_remote(title: str, description: str = "") -> str:
+    """Valeur de ``RemoteMode`` déduite du titre et de la description.
+
+    Règle simple : FULL, PARTIAL ou NONE (explicite seulement) si une seule catégorie est
+    détectée ; ``UNKNOWN`` si aucune, ou si plusieurs sont en conflit.
+    """
+    text = normalize_spaces(strip_accents(f"{title}\n{description}").lower())
+    found = [value for value, pattern in _REMOTE_PATTERNS.items() if pattern.search(text)]
+    return found[0] if len(found) == 1 else "UNKNOWN"

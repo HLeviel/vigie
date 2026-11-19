@@ -9,6 +9,7 @@ from vigie.radar.normalize import (
     normalize_spaces,
     parse_contract_type,
     parse_location,
+    parse_remote,
     parse_salary,
 )
 
@@ -85,6 +86,14 @@ def test_parse_contract_type(label: str | None, expected: str) -> None:
         ("Mensuel de 3000 Euros à 3500 Euros", (36000.0, 42000.0)),
         ("Mensuel de 3000 Euros sur 12 mois", (36000.0, 36000.0)),
         ("Annuel de 50000,50 Euros", (50000.5, 50000.5)),
+        ("Mensuel de 3000 Euros sur 13 mois", (39000.0, 39000.0)),
+        ("Mensuel de 3000 Euros à 3500 Euros sur 13 mois", (39000.0, 45500.0)),
+        ("Mensuel de 3000 Euros sur 13,5 mois", (40500.0, 40500.0)),
+        ("Mensuel de 3000 Euros sur 13.5 mois", (40500.0, 40500.0)),
+        ("Mensuel de 3000 Euros sur 12 mois", (36000.0, 36000.0)),
+        ("Mensuel de 3000 Euros sur 0 mois", (None, None)),
+        ("Mensuel de 3000 Euros sur 99 mois", (None, None)),
+        ("Annuel de 45000 Euros sur 13 mois", (45000.0, 45000.0)),
         ("Horaire de 12.5 Euros", (None, None)),
         ("Selon profil", (None, None)),
         ("", (None, None)),
@@ -148,3 +157,30 @@ def test_is_suspicious_true(text: str) -> None:
 )
 def test_is_suspicious_false(text: str) -> None:
     assert not is_suspicious(text)
+
+
+@pytest.mark.parametrize(
+    ("title", "description", "expected"),
+    [
+        ("Data Engineer", "Poste en 100 % télétravail", "FULL"),
+        ("Data Engineer", "100% remote possible", "FULL"),
+        ("Data Engineer (Full Remote)", "", "FULL"),
+        ("Data Engineer", "Full-remote depuis la France", "FULL"),
+        ("Data Engineer", "Télétravail 100 %", "FULL"),
+        ("Data Engineer", "Télétravail partiel possible", "PARTIAL"),
+        ("Data Engineer hybride", "", "PARTIAL"),
+        ("Data Engineer", "Organisation hybride, 2 jours de télétravail", "PARTIAL"),
+        ("Data Engineer", "3 jours de télétravail par semaine", "PARTIAL"),
+        ("Data Engineer", "Pas de télétravail", "NONE"),
+        ("Data Engineer", "Poste sans télétravail", "NONE"),
+        ("Data Engineer", "Télétravail impossible", "NONE"),
+        ("Data Engineer", "Aucun télétravail", "NONE"),
+        ("Data Engineer", "Pas de télétravail complet", "UNKNOWN"),
+        ("Data Engineer", "Pas de télétravail partiel", "UNKNOWN"),
+        ("Data Engineer", "Hybride mais full remote possible", "UNKNOWN"),
+        ("Data Engineer", "Télétravail possible", "UNKNOWN"),
+        ("Data Engineer", "", "UNKNOWN"),
+    ],
+)
+def test_parse_remote(title: str, description: str, expected: str) -> None:
+    assert parse_remote(title, description) == expected

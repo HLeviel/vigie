@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 
@@ -91,6 +92,29 @@ def test_search_query_zone_rules() -> None:
     assert SearchQuery(name="x", commune="69123", distance_km=10).distance_km == 10
 
 
+def test_search_query_without_zone_requires_keyword() -> None:
+    with pytest.raises(ValidationError):
+        SearchQuery(name="x")
+    with pytest.raises(ValidationError):
+        SearchQuery(name="x", contract_types=[ContractType.CDI])
+
+
+def test_search_query_without_zone_warns(caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level(logging.WARNING, logger="vigie.radar.models"):
+        SearchQuery(name="secret-name", keywords=["python-secret"])
+    assert len(caplog.records) == 1
+    assert "zone" in caplog.text
+    assert "secret-name" not in caplog.text
+    assert "python-secret" not in caplog.text
+
+
+def test_search_query_with_zone_does_not_warn(caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level(logging.WARNING, logger="vigie.radar.models"):
+        SearchQuery(name="x", departments=["69"])
+        SearchQuery(name="x", commune="69123", distance_km=10)
+    assert caplog.records == []
+
+
 def test_search_query_rejects_bad_values() -> None:
     with pytest.raises(ValidationError):
         SearchQuery(name="x", max_age_days=0)
@@ -102,3 +126,15 @@ def test_run_report() -> None:
     report = RunReport(run_id="r1", started_at=NOW)
     assert report.finished_at is None
     assert report.sources == []
+
+
+def test_remote_is_inferred_when_not_given() -> None:
+    assert make_offer(description="Poste en 100 % télétravail").remote is RemoteMode.FULL
+    assert make_offer(title="Data Engineer hybride").remote is RemoteMode.PARTIAL
+    assert make_offer(description="Pas de télétravail").remote is RemoteMode.NONE
+    assert make_offer().remote is RemoteMode.UNKNOWN
+
+
+def test_explicit_remote_is_kept() -> None:
+    offer = make_offer(remote=RemoteMode.NONE, description="100 % télétravail")
+    assert offer.remote is RemoteMode.NONE

@@ -1,5 +1,6 @@
 """Modèles de données de radar : Offer, SearchQuery, RunReport."""
 
+import logging
 from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any, Self
@@ -14,7 +15,14 @@ from pydantic import (
     model_validator,
 )
 
-from vigie.radar.normalize import compute_dedup_key, is_suspicious, normalize_spaces
+from vigie.radar.normalize import (
+    compute_dedup_key,
+    is_suspicious,
+    normalize_spaces,
+    parse_remote,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class ContractType(StrEnum):
@@ -76,6 +84,13 @@ class Offer(BaseModel):
         return _to_utc(value)
 
     @model_validator(mode="after")
+    def _infer_remote(self) -> Self:
+        """Déduit ``remote`` du titre et de la description s'il n'est pas fourni."""
+        if "remote" not in self.model_fields_set:
+            self.remote = RemoteMode(parse_remote(self.title, self.description))
+        return self
+
+    @model_validator(mode="after")
     def _salary_order(self) -> Self:
         low, high = self.salary_min, self.salary_max
         if low is not None and high is not None and low > high:
@@ -118,6 +133,11 @@ class SearchQuery(BaseModel):
             raise ValueError("zone : une commune requiert distance_km")
         if self.distance_km is not None and not self.commune:
             raise ValueError("zone : distance_km requiert une commune")
+        if not self.departments and not self.commune:
+            if not self.keywords:
+                raise ValueError("une recherche sans zone exige au moins un mot-clé")
+            # Message volontairement sans nom ni critère : les logs Actions sont publics.
+            logger.warning("Une recherche n'a pas de zone géographique : toute la France.")
         return self
 
 
