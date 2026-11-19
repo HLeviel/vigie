@@ -217,16 +217,18 @@ _REMOTE_PATTERNS: dict[str, re.Pattern[str]] = {
     "FULL": re.compile(
         r"100\s*%\s*(?:en\s+)?(?:teletravail|remote)"
         r"|teletravail\s+(?:a\s+)?100\s*%"
-        r"|full[\s-]?remote"
+        r"|(?<!pas de )(?<!sans )(?<!non )teletravail\s+complet"
+        r"|full(?:y)?[\s-]?remote"
     ),
     "PARTIAL": re.compile(
-        r"teletravail\s+partiel|\bhybrid(?:e|s)?\b|\d+\s+jours?\s+(?:de|en|par\s+semaine\s+de)\s+teletravail"
+        r"teletravail\s+partiel|\bhybrid(?:e|s)?\b"
+        r"|\d+\s+jours?\s+(?:de|en|par\s+semaine\s+de)\s+teletravail"
     ),
     "NONE": re.compile(
         r"pas\s+de\s+teletravail(?!\s+(?:complet|total))"
         r"|sans\s+teletravail"
         r"|aucun\s+teletravail"
-        r"|teletravail\s+(?:impossible|non\s+autorise)"
+        r"|teletravail\s+(?:impossible|non\s+possible|non\s+autorise)"
     ),
 }
 
@@ -234,9 +236,11 @@ _REMOTE_PATTERNS: dict[str, re.Pattern[str]] = {
 def parse_remote(title: str, description: str = "") -> str:
     """Valeur de ``RemoteMode`` déduite du titre et de la description.
 
-    Règle simple : FULL, PARTIAL ou NONE (explicite seulement) si une seule catégorie est
-    détectée ; ``UNKNOWN`` si aucune, ou si plusieurs sont en conflit.
+    FULL, PARTIAL ou NONE (explicite seulement) ; ``UNKNOWN`` si aucun signal ;
+    ``PARTIAL`` en cas de signaux contradictoires (spec 1.1).
     """
     text = normalize_spaces(strip_accents(f"{title}\n{description}").lower())
     found = [value for value, pattern in _REMOTE_PATTERNS.items() if pattern.search(text)]
-    return found[0] if len(found) == 1 else "UNKNOWN"
+    if not found:
+        return "UNKNOWN"
+    return found[0] if len(found) == 1 else "PARTIAL"
