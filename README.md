@@ -46,12 +46,12 @@ La collecte, le dédoublonnage et les filtres appartiennent à `radar`. Les troi
 
 | Module | Rôle | Statut |
 |---|---|---|
-| `radar` | Veille quotidienne des offres, sans LLM | En cours (squelette du projet seulement) |
+| `radar` | Veille quotidienne des offres, sans LLM | En cours (modèles et normalisation ; aucune source ni collecte) |
 | `match` | Score offre/CV en 3 étages, évaluation precision@k | Prévu |
 | `cv` | CV et lettre adaptés, packagés en Agent Skill | Prévu |
 | `agent` | Agent LangChain, validation humaine avant action | Prévu |
 
-Aucun module n'est encore fonctionnel : `radar` n'a pour l'instant que son squelette (configuration, outillage, CI). Ce tableau sera mis à jour à chaque avancée réelle.
+Aucun module n'est encore fonctionnel : `radar` n'a pour l'instant que son squelette, ses modèles de données et ses fonctions de normalisation (aucune collecte). Ce tableau sera mis à jour à chaque avancée réelle.
 
 ## Démarrage rapide
 
