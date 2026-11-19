@@ -1,0 +1,11 @@
+[project]
+name = "vigie"
+version = "0.0.0"
+description = "Copilote IA de recherche d'emploi pour le marché français"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.ruff]
+line-length = 100
