@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0B1F3A"/>
+      <stop offset="1" stop-color="#16365F"/>
+    </linearGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0E2A4D"/>
+      <stop offset="1" stop-color="#081629"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFC857" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#FFC857" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Ciel et mer -->
+  <rect width="1200" height="630" fill="url(#sky)"/>
+  <rect y="430" width="1200" height="200" fill="url(#sea)"/>
+  <line x1="0" y1="430" x2="1200" y2="430" stroke="#5FA8D3" stroke-width="2" opacity="0.6"/>
+
+  <!-- Vagues -->
+  <g fill="none" stroke="#5FA8D3" stroke-width="2" opacity="0.35" stroke-linecap="round">
+    <path d="M40 480 q20 -10 40 0 t40 0 t40 0"/>
+    <path d="M260 520 q20 -10 40 0 t40 0 t40 0"/>
+    <path d="M90 570 q20 -10 40 0 t40 0 t40 0"/>
+    <path d="M700 500 q20 -10 40 0 t40 0 t40 0"/>
+    <path d="M950 560 q20 -10 40 0 t40 0 t40 0"/>
+    <path d="M520 590 q20 -10 40 0 t40 0 t40 0"/>
+  </g>
+
+  <!-- Ondes de veille depuis la vigie -->
+  <g fill="none" stroke="#5FA8D3" stroke-linecap="round" stroke-width="3">
+    <path d="M285 164 A70 70 0 0 1 285 286" opacity="0.75"/>
+    <path d="M305 130 A110 110 0 0 1 305 320" opacity="0.55"/>
+    <path d="M325 95 A150 150 0 0 1 325 355" opacity="0.38"/>
+    <path d="M345 60 A190 190 0 0 1 345 390" opacity="0.22"/>
+  </g>
+
+  <!-- Points sur l'horizon : offres, une seule signalée -->
+  <g fill="#5FA8D3" opacity="0.55">
+    <circle cx="470" cy="418" r="5"/>
+    <circle cx="560" cy="422" r="4"/>
+    <circle cx="640" cy="416" r="5"/>
+    <circle cx="820" cy="420" r="4"/>
+    <circle cx="900" cy="417" r="5"/>
+    <circle cx="1040" cy="421" r="4"/>
+  </g>
+  <circle cx="730" cy="414" r="30" fill="url(#glow)"/>
+  <circle cx="730" cy="414" r="8" fill="#FFC857"/>
+  <line x1="280" y1="225" x2="722" y2="411" stroke="#FFC857" stroke-width="2" stroke-dasharray="6 8" opacity="0.8"/>
+
+  <!-- Mât et nid de pie -->
+  <g stroke="#E8EEF5" stroke-linecap="round">
+    <line x1="250" y1="200" x2="250" y2="440" stroke-width="8"/>
+    <line x1="200" y1="300" x2="300" y2="300" stroke-width="5"/>
+    <line x1="250" y1="200" x2="170" y2="430" stroke-width="2" opacity="0.6"/>
+    <line x1="250" y1="200" x2="330" y2="430" stroke-width="2" opacity="0.6"/>
+  </g>
+  <path d="M222 205 L278 205 L272 245 L228 245 Z" fill="#E8EEF5"/>
+  <circle cx="250" cy="188" r="11" fill="#FFC857"/>
+  <path d="M250 150 L250 172" stroke="#E8EEF5" stroke-width="4" stroke-linecap="round"/>
+  <path d="M250 152 L276 160 L250 168 Z" fill="#FFC857"/>
+
+  <!-- Coque -->
+  <path d="M150 440 L350 440 L325 470 L175 470 Z" fill="#E8EEF5"/>
+
+  <!-- Texte -->
+  <text x="1140" y="205" text-anchor="end" font-family="Helvetica, Arial, sans-serif" font-size="120" font-weight="700" fill="#E8EEF5" letter-spacing="4">vigie</text>
+  <text x="1140" y="262" text-anchor="end" font-family="Helvetica, Arial, sans-serif" font-size="30" fill="#5FA8D3">Copilote IA de recherche d'emploi</text>
+  <text x="1140" y="302" text-anchor="end" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#9FB4C8">Veille · Matching · CV adapté · Agent</text>
+</svg>
