@@ -46,16 +46,16 @@ La collecte, le dédoublonnage et les filtres appartiennent à `radar`. Les troi
 
 | Module | Rôle | Statut |
 |---|---|---|
-| `radar` | Veille quotidienne des offres, sans LLM | En cours (modèles, normalisation, sources Adzuna et France Travail non testées sur les API réelles) |
+| `radar` | Veille quotidienne des offres, sans LLM | En cours (collecte Adzuna, stockage, dédoublonnage, filtres et CLI ; pas encore de digest ni de planification) |
 | `match` | Score offre/CV en 3 étages, évaluation precision@k | Prévu |
 | `cv` | CV et lettre adaptés, packagés en Agent Skill | Prévu |
 | `agent` | Agent LangChain, validation humaine avant action | Prévu |
 
-Aucun module n'est encore fonctionnel : `radar` n'a pour l'instant que son squelette, ses modèles de données, ses fonctions de normalisation et des sources Adzuna et France Travail écrites sans accès aux API réelles (non vérifiées). Ce tableau sera mis à jour à chaque avancée réelle.
+Aucun module n'est encore fonctionnel : `radar` n'a pour l'instant que son squelette, ses modèles de données, ses fonctions de normalisation et une source Adzuna vérifiée sur appels réels, une source France Travail non vérifiée (API suspendue), le stockage SQLite, le dédoublonnage, les filtres et la CLI (`run`, `check`, `stats`). Ce tableau sera mis à jour à chaque avancée réelle.
 
 ## Démarrage rapide
 
-> **Prévu.** Cette section décrit la cible. Le code n'existe pas encore : les commandes ci-dessous ne fonctionneront pas aujourd'hui. Les noms et options peuvent changer.
+> **En cours.** Seul `radar` est partiellement utilisable (collecte Adzuna, stockage, filtres). Le digest, les sources ATS et email, `match`, `cv` et `agent` n'existent pas encore.
 
 ```bash
 git clone https://github.com/HLeviel/vigie.git
@@ -76,7 +76,15 @@ Variables d'environnement (voir [`.env.example`](.env.example)) :
 
 Les secrets sont lus uniquement par `src/vigie/settings.py`. Le squelette de ce chargement existe ; le reste de `radar` reste à écrire.
 
-Le lancement (`radar`, puis `match`) sera documenté quand le premier module existera.
+Lancement de `radar` (voir `config/radar.example.yaml` pour la configuration) :
+
+```bash
+uv run vigie radar check --config config/radar.yaml
+uv run vigie radar run --config config/radar.yaml --dry-run
+uv run vigie radar stats
+```
+
+`check` ne fait aucun appel réseau. `run --dry-run` collecte sans rien écrire. Le digest et la planification ne sont pas encore disponibles.
 
 ## Choix techniques
 

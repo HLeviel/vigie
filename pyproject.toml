@@ -16,6 +16,9 @@ dependencies = [
     "boto3>=1.35",
 ]
 
+[project.scripts]
+vigie = "vigie.radar.cli:root"
+
 [dependency-groups]
 dev = [
     "ruff>=0.6",
@@ -51,4 +54,5 @@ plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 addopts = "--cov=src/vigie --cov-report=term-missing"

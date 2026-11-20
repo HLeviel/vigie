@@ -6,6 +6,7 @@ Aucun secret n'a de valeur par défaut : une variable absente vaut ``None``.
 """
 
 from collections.abc import Iterable
+from pathlib import Path
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -48,6 +49,9 @@ class Settings(BaseSettings):
     smtp_user: SecretStr | None = None
     smtp_password: SecretStr | None = None
     digest_to: SecretStr | None = None
+
+    # Chemin de la base SQLite (non secret) ; défaut : ~/.local/share/vigie/radar.db
+    vigie_db_path: Path | None = None
 
     # État et configuration réelle (lot M2)
     vigie_state_bucket: str | None = None

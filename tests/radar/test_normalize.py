@@ -3,6 +3,7 @@ import pytest
 from vigie.radar.normalize import (
     compute_dedup_key,
     department_from_postal_code,
+    extract_city,
     html_to_text,
     is_suspicious,
     normalize_for_key,
@@ -188,3 +189,38 @@ def test_is_suspicious_false(text: str) -> None:
 )
 def test_parse_remote(title: str, description: str, expected: str) -> None:
     assert parse_remote(title, description) == expected
+
+
+@pytest.mark.parametrize(
+    ("label", "expected"),
+    [
+        ("69 - LYON 03", "lyon"),
+        ("Lyon, Rhône", "lyon"),
+        ("Villeurbanne, Lyon", "villeurbanne"),
+        ("Lyon (69)", "lyon"),
+        ("Paris 8e", "paris"),
+        ("75 - Paris 08", "paris"),
+        ("Saint-Étienne", "saint etienne"),
+        ("69 - ", None),
+        ("", None),
+        (None, None),
+    ],
+)
+def test_extract_city(label: str | None, expected: str | None) -> None:
+    assert extract_city(label) == expected
+
+
+def test_dedup_key_zone_fallbacks() -> None:
+    import hashlib
+
+    def sha(text: str) -> str:
+        return hashlib.sha256(text.encode()).hexdigest()
+
+    # département connu : il est utilisé, même si un lieu existe
+    assert compute_dedup_key("Acme", "Data", "69", "Paris") == sha("acme|data|69")
+    # département inconnu : ville normalisée du lieu
+    assert compute_dedup_key("Acme", "Data", None, "69 - LYON 03") == sha("acme|data|lyon")
+    assert compute_dedup_key("Acme", "Data", None, "Lyon, Rhône") == sha("acme|data|lyon")
+    # ni département ni lieu : entreprise et titre seulement
+    assert compute_dedup_key("Acme", "Data", None, None) == sha("acme|data")
+    assert compute_dedup_key(None, "Data", None, None) == sha("|data")
