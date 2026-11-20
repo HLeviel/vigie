@@ -46,6 +46,17 @@ def test_invalid_configs_raise(text: str) -> None:
         load_config_text(text)
 
 
+def test_allowed_senders_must_name_a_known_parser() -> None:
+    base = "searches:\n  - { name: x, keywords: [a], departments: ['69'] }\n"
+    ok = base + "email_alerts:\n  allowed_senders:\n    apec: ['@apec.fr']\n"
+    assert load_config_text(ok).email_alerts.allowed_senders == {"apec": ["@apec.fr"]}
+    bad = base + "email_alerts:\n  allowed_senders:\n    inconnu: ['@x.fr']\n"
+    with pytest.raises(ConfigError) as exc:
+        load_config_text(bad)
+    assert "expéditeur inconnu" in str(exc.value)
+    assert "inconnu:" not in str(exc.value)
+
+
 def test_errors_never_echo_values() -> None:
     text = (
         "searches:\n  - { name: confidentiel, keywords: [valeur-secrete], "

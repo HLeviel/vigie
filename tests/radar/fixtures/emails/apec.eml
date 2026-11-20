@@ -1,0 +1,30 @@
+From: APEC <noreply@apec.fr>
+To: candidat@example.org
+Subject: Nouvelles offres APEC
+Date: Thu, 19 Nov 2026 07:30:00 +0000
+Message-ID: <apec-1@example.org>
+MIME-Version: 1.0
+Content-Type: multipart/alternative;
+ boundary="===============7385365249372487737=="
+
+--===============7385365249372487737==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Version texte de l'alerte.
+
+--===============7385365249372487737==
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<html><head><title>Alerte</title><style>p{color:red}</style></head><body><tab=
+le><tr><td><a href=3D"https://www.apec.fr/candidat/recherche-emploi.html/empl=
+oi/detail-offre/178000001W?xtor=3DEPR-1">Ing=C3=A9nieur Machine Learning</a><=
+div>Soci=C3=A9t=C3=A9 Exemple</div><div>Lyon (69)</div><div>CDI - 55 k=E2=82=
+=AC</div><a href=3D"https://www.apec.fr/candidat/recherche-emploi.html/emploi=
+/detail-offre/178000001W?xtor=3DEPR-1">Voir l'offre</a></td></tr></table><p><=
+a href=3D"https://alertes.example.org/desabonnement?token=3DSECRET123">Se d=
+=C3=A9sabonner</a></p></body></html>
+
+--===============7385365249372487737==--

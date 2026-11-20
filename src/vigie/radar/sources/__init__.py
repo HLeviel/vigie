@@ -10,6 +10,7 @@ from vigie.radar.config import RadarConfig
 from vigie.radar.sources.adzuna import AdzunaSource
 from vigie.radar.sources.ats import AtsSource
 from vigie.radar.sources.base import Source
+from vigie.radar.sources.email_alerts import EmailAlertsSource
 from vigie.radar.sources.france_travail import FranceTravailSource
 from vigie.settings import Settings
 
@@ -19,6 +20,7 @@ SourceFactory = Callable[[Settings, RadarConfig], Source]
 REGISTRY: dict[str, SourceFactory] = {
     "adzuna": lambda settings, config: AdzunaSource(settings),
     "ats": lambda settings, config: AtsSource(config.ats_companies),
+    "email_alerts": lambda settings, config: EmailAlertsSource(settings, config.email_alerts),
     "france_travail": lambda settings, config: FranceTravailSource(settings),
 }
 

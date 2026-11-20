@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from vigie.radar.models import SearchQuery
 from vigie.settings import Settings
@@ -40,8 +40,20 @@ class AtsCompany(_Strict):
     token: str = Field(min_length=1)
 
 
+# Un parseur par expéditeur : les clés de ``allowed_senders`` doivent en désigner un.
+SENDER_KEYS = ("france_travail", "apec", "wttj", "linkedin")
+
+
 class EmailAlertsConfig(_Strict):
     allowed_senders: dict[str, list[str]] = Field(default_factory=dict)
+
+    @field_validator("allowed_senders")
+    @classmethod
+    def _known_senders(cls, value: dict[str, list[str]]) -> dict[str, list[str]]:
+        unknown = sorted(set(value) - set(SENDER_KEYS))
+        if unknown:
+            raise ValueError(f"expéditeur inconnu (attendu : {', '.join(SENDER_KEYS)})")
+        return value
 
 
 class FiltersConfig(_Strict):

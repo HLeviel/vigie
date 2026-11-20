@@ -14,6 +14,7 @@ dependencies = [
     "PyYAML>=6.0",
     "jinja2>=3.1",
     "boto3>=1.35",
+    "beautifulsoup4>=4.15.0",
 ]
 
 [project.scripts]

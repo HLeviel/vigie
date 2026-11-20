@@ -46,16 +46,16 @@ La collecte, le dédoublonnage et les filtres appartiennent à `radar`. Les troi
 
 | Module | Rôle | Statut |
 |---|---|---|
-| `radar` | Veille quotidienne des offres, sans LLM | En cours (collecte Adzuna et ATS, stockage, dédoublonnage, filtres et CLI ; pas encore d'alertes email, de digest ni de planification) |
+| `radar` | Veille quotidienne des offres, sans LLM | En cours (collecte Adzuna et ATS, lecture des alertes email non vérifiée sur de vrais emails, stockage, dédoublonnage, filtres et CLI ; pas encore de digest ni de planification) |
 | `match` | Score offre/CV en 3 étages, évaluation precision@k | Prévu |
 | `cv` | CV et lettre adaptés, packagés en Agent Skill | Prévu |
 | `agent` | Agent LangChain, validation humaine avant action | Prévu |
 
-Aucun module n'est encore fonctionnel : `radar` n'a pour l'instant que son squelette, ses modèles de données, ses fonctions de normalisation et une source Adzuna vérifiée sur appels réels, des sources ATS (Greenhouse, Lever, Ashby, SmartRecruiters, Recruitee) vérifiées sur les API publiques, une source France Travail non vérifiée (API suspendue), le stockage SQLite, le dédoublonnage, les filtres et la CLI (`run`, `check`, `stats`). Ce tableau sera mis à jour à chaque avancée réelle.
+Aucun module n'est encore fonctionnel : `radar` n'a pour l'instant que son squelette, ses modèles de données, ses fonctions de normalisation et une source Adzuna vérifiée sur appels réels, des sources ATS (Greenhouse, Lever, Ashby, SmartRecruiters, Recruitee) vérifiées sur les API publiques, la lecture IMAP des alertes email (parseurs non vérifiés faute d'exemples réels), une source France Travail non vérifiée (API suspendue), le stockage SQLite, le dédoublonnage, les filtres et la CLI (`run`, `check`, `stats`). Ce tableau sera mis à jour à chaque avancée réelle.
 
 ## Démarrage rapide
 
-> **En cours.** Seul `radar` est partiellement utilisable (collecte Adzuna, stockage, filtres). Le digest, les alertes email, `match`, `cv` et `agent` n'existent pas encore.
+> **En cours.** Seul `radar` est partiellement utilisable (collecte Adzuna, stockage, filtres). Le digest, `match`, `cv` et `agent` n'existent pas encore.
 
 ```bash
 git clone https://github.com/HLeviel/vigie.git
@@ -70,6 +70,7 @@ Variables d'environnement (voir [`.env.example`](.env.example)) :
 |---|---|
 | `FT_CLIENT_ID`, `FT_CLIENT_SECRET`, `FT_SCOPE` (facultatif) | API France Travail |
 | `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` | API Adzuna (lot M2) |
+| `IMAP_HOST`, `IMAP_USER`, `IMAP_PASSWORD`, `IMAP_FOLDER` | Lecture des alertes email, en lecture seule (mot de passe d'application) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `DIGEST_TO` | Envoi du digest (lot M2) |
 | `VIGIE_STATE_BUCKET` | Bucket S3 privé de l'état (lot M2) |
 | `VIGIE_RADAR_CONFIG` | Critères de recherche réels, hors dépôt (lot M2) |
