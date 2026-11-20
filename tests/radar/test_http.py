@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime, timedelta
 from email.utils import format_datetime
 
@@ -164,3 +165,13 @@ def test_parse_retry_after() -> None:
     assert 20 < value <= 30
     past = datetime.now(UTC) - timedelta(seconds=30)
     assert parse_retry_after(format_datetime(past, usegmt=True)) == 0.0
+
+
+@respx.mock
+def test_library_loggers_do_not_leak_secret_params(
+    clock: Clock, caplog: pytest.LogCaptureFixture
+) -> None:
+    respx.get(URL).mock(return_value=httpx.Response(200))
+    with caplog.at_level(logging.DEBUG), make_client(clock) as client:
+        client.request("GET", URL, params={"app_key": SECRET})
+    assert SECRET not in caplog.text

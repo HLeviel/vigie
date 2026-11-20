@@ -46,12 +46,12 @@ La collecte, le dédoublonnage et les filtres appartiennent à `radar`. Les troi
 
 | Module | Rôle | Statut |
 |---|---|---|
-| `radar` | Veille quotidienne des offres, sans LLM | En cours (modèles, normalisation, source France Travail non testée sur l'API réelle) |
+| `radar` | Veille quotidienne des offres, sans LLM | En cours (modèles, normalisation, sources Adzuna et France Travail non testées sur les API réelles) |
 | `match` | Score offre/CV en 3 étages, évaluation precision@k | Prévu |
 | `cv` | CV et lettre adaptés, packagés en Agent Skill | Prévu |
 | `agent` | Agent LangChain, validation humaine avant action | Prévu |
 
-Aucun module n'est encore fonctionnel : `radar` n'a pour l'instant que son squelette, ses modèles de données, ses fonctions de normalisation et une source France Travail écrite sans accès à l'API (non vérifiée). Ce tableau sera mis à jour à chaque avancée réelle.
+Aucun module n'est encore fonctionnel : `radar` n'a pour l'instant que son squelette, ses modèles de données, ses fonctions de normalisation et des sources Adzuna et France Travail écrites sans accès aux API réelles (non vérifiées). Ce tableau sera mis à jour à chaque avancée réelle.
 
 ## Démarrage rapide
 

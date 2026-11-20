@@ -1,0 +1,58 @@
+{
+  "__CLASS__": "Adzuna::API::Response::JobSearchResults",
+  "count": 4,
+  "mean": 52000,
+  "results": [
+    {
+      "__CLASS__": "Adzuna::API::Response::Job",
+      "id": "4400001",
+      "title": "Data Engineer Python H/F",
+      "description": "Au sein de l'equipe data, vous developpez des pipelines Python. 2 jours de teletravail ...",
+      "created": "2026-11-18T08:15:00Z",
+      "redirect_url": "https://www.adzuna.fr/land/ad/4400001?utm_medium=api&utm_source=exemple",
+      "company": {"__CLASS__": "Adzuna::API::Response::Company", "display_name": "Exemple SA"},
+      "location": {
+        "__CLASS__": "Adzuna::API::Response::Location",
+        "area": ["France", "Auvergne-Rhone-Alpes", "Rhône", "Lyon"],
+        "display_name": "Lyon, Rhône"
+      },
+      "category": {"__CLASS__": "Adzuna::API::Response::Category", "label": "Emplois Informatique", "tag": "it-jobs"},
+      "contract_type": "permanent",
+      "contract_time": "full_time",
+      "salary_min": 45000,
+      "salary_max": 55000,
+      "salary_is_predicted": "0",
+      "latitude": 45.76,
+      "longitude": 4.84
+    },
+    {
+      "__CLASS__": "Adzuna::API::Response::Job",
+      "id": "4400002",
+      "title": "Developpeur Machine Learning",
+      "description": "<p>Mission de 6 mois.</p><p>Full remote possible.</p>",
+      "created": "2026-11-19T10:00:00Z",
+      "redirect_url": "https://www.adzuna.fr/land/ad/4400002",
+      "company": {"display_name": "Autre SAS"},
+      "location": {"area": ["France", "Ile-de-France", "Paris", "Paris"], "display_name": "Paris, Ile-de-France"},
+      "contract_type": "contract",
+      "salary_min": 62000.0,
+      "salary_max": 62000.0,
+      "salary_is_predicted": 1
+    },
+    {
+      "id": "4400003",
+      "title": "Alternance Data Analyst",
+      "description": "",
+      "created": "2026-11-17T09:00:00Z",
+      "redirect_url": "https://www.adzuna.fr/land/ad/4400003",
+      "location": {"area": ["France"], "display_name": "France"},
+      "contract_type": "permanent"
+    },
+    {
+      "id": "4400004",
+      "title": "Ingenieur IA",
+      "created": "2026-11-19T12:00:00Z",
+      "redirect_url": "https://www.adzuna.fr/land/ad/4400004"
+    }
+  ]
+}

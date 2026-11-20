@@ -77,3 +77,22 @@ Décisions d'implémentation de `radar` que `spec_radar.md` ne tranche pas. Une 
 | 19/11/2026 | Paramètres masqués : `app_key`, `app_id`, `client_secret`, plus `client_id` et `access_token` | La spec en cite trois ; `client_id` est aussi un secret ici | Étape 3 |
 | 19/11/2026 | Pause minimale entre requêtes par client (une instance par source), 0,2 s par défaut | La spec dit « par source » sans préciser la portée | Étape 4 (pipeline) |
 | 19/11/2026 | Registre : dictionnaire `REGISTRY` de fabriques `Settings -> Source` | Satisfait « un fichier et une entrée, sans toucher au pipeline » | Étape 4 |
+
+## Étape 3 (spec 1.2) : source Adzuna
+
+| Date | Décision | Raison | À confirmer à |
+|---|---|---|---|
+| 20/11/2026 | Étape 3 = Adzuna (spec 1.2). La source France Travail déjà fusionnée (PR 3) reste dans le code mais n'est pas requise ; elle sera désactivée par défaut dans la configuration YAML | La spec 1.2 la passe en « en attente, livrée désactivée » (étape 9) | Étape 4 (config) |
+| 20/11/2026 | Confirmé par l'exemple de la doc officielle : réponse `results`, champs `id`, `title`, `description` (extrait), `created` (ISO), `redirect_url`, `company.display_name`, `location.display_name/area`, `salary_min/max`, `salary_is_predicted`, `contract_type` | Doc Adzuna (`developer.adzuna.com/docs/search`) | Étape 3 (fait) |
+| 20/11/2026 | Requêtes avec l'en-tête `Accept: application/json` | La doc indique que sans lui l'API répond en JSONP | Étape 3 (fait) |
+| 20/11/2026 | **Non vérifié** : paramètres `what`, `where`, `distance`, `max_days_old`, `results_per_page=50`, page dans l'URL à partir de 1 | Repris de la spec ; la doc interactive n'est pas lisible hors JavaScript | Étape 3, avec de vraies clés |
+| 20/11/2026 | **Non vérifié** : pagination arrêtée quand une page a moins de 50 résultats ou que `page x 50 >= count` ; plafond de 20 pages (1 000 offres) par mot-clé et zone, avec avertissement | `count` et la limite réelle ne sont pas documentés dans l'extrait lu | Étape 3 |
+| 20/11/2026 | **Non vérifié** : un département devient `where` = son nom (table `geo.py`), une commune devient `where` = le texte saisi + `distance` en km | `where` est du texte libre ; la spec ne dit rien de la conversion d'un code département ; une commune au format code INSEE ne marcherait pas | Étape 3, avec de vraies clés |
+| 20/11/2026 | Département d'une offre déduit des éléments de `location.area` qui correspondent à un nom de département | Nécessaire au `dedup_key` ; `area` est documenté mais son contenu français est à vérifier | Étape 4 (dédoublonnage) |
+| 20/11/2026 | Salaire `salary_is_predicted` vrai : `salary_min` et `salary_max` ignorés (`None`) | Une estimation d'Adzuna n'est pas un salaire annoncé ; la spec dit de reprendre les montants « tels quels », à arbitrer | Étape 3 |
+| 20/11/2026 | Salaires Adzuna supposés annuels en euros, sans conversion | Non précisé dans l'extrait de doc lu | Étape 3, avec de vraies clés |
+| 20/11/2026 | **Non vérifié** : `contract_type` `permanent` = CDI et `contract` = CDD ; un titre explicite (alternance, stage, intérim, freelance) l'emporte | Valeurs de la doc (sans le marché français) ; Adzuna France renseigne peu ce champ | Étape 3 |
+| 20/11/2026 | `description` Adzuna stockée telle quelle (extrait), HTML supprimé ; `postal_code` laissé vide | La spec le prévoit ; Adzuna ne fournit pas de code postal | Étape 3 |
+| 20/11/2026 | Département inconnu dans une recherche : `ValueError` sans le code dans le message | Les critères ne doivent pas apparaître dans les logs | Étape 4 (validation de la config) |
+| 20/11/2026 | Les bibliothèques `httpx` et `httpcore` sont forcées au niveau WARNING | `httpx` journalise l'URL complète au niveau INFO, donc `app_key` : fuite détectée par un test | Étape 3 (fait) |
+| 20/11/2026 | La fixture `adzuna_search.json` est reconstruite sur la structure de la doc, avec des valeurs fictives | Aucune clé Adzuna disponible pour enregistrer une vraie réponse | Étape 3 |

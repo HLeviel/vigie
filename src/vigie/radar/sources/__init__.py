@@ -6,6 +6,7 @@ sans toucher au pipeline.
 
 from collections.abc import Callable
 
+from vigie.radar.sources.adzuna import AdzunaSource
 from vigie.radar.sources.base import Source
 from vigie.radar.sources.france_travail import FranceTravailSource
 from vigie.settings import Settings
@@ -13,7 +14,10 @@ from vigie.settings import Settings
 SourceFactory = Callable[[Settings], Source]
 
 # nom de source -> fabrique. Une nouvelle source s'inscrit ici.
-REGISTRY: dict[str, SourceFactory] = {"france_travail": FranceTravailSource}
+REGISTRY: dict[str, SourceFactory] = {
+    "adzuna": AdzunaSource,
+    "france_travail": FranceTravailSource,
+}
 
 
 class UnknownSourceError(KeyError):
