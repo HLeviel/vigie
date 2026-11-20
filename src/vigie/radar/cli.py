@@ -1,11 +1,12 @@
-"""Interface en ligne de commande : ``vigie radar run | check | stats``.
+"""Interface en ligne de commande : ``vigie radar run | check | stats | digest``.
 
-La commande ``digest`` arrive avec le module ``digest.py`` (étape 7 de la spec).
-Les sorties n'affichent que des compteurs et des noms de variables, jamais de secret,
-d'intitulé d'offre ni de critère de recherche.
+Les sorties n'affichent que des compteurs et des noms de variables, jamais de secret, d'intitulé
+d'offre ni de critère de recherche. Le digest, lui, contient les offres : il va dans un fichier
+(créé en mode 0600), pas sur la sortie standard sauf demande explicite (``--output -``).
 """
 
 import logging
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
@@ -13,6 +14,7 @@ from typing import Annotated
 import typer
 
 from vigie.radar.config import ConfigError, RadarConfig, resolve_config
+from vigie.radar.digest import build_digest, render
 from vigie.radar.pipeline import (
     EXIT_CONFIG,
     SourcePlan,
@@ -172,6 +174,61 @@ def stats(
                 f"erreurs={src['errors']}{flag}"
             )
     typer.echo(f"offres à notifier : {pending}")
+
+
+@app.command()
+def digest(
+    config: ConfigOption = None,
+    db: DbOption = None,
+    output: Annotated[
+        str | None,
+        typer.Option("--output", help="Fichier de sortie ; `-` pour la sortie standard."),
+    ] = None,
+    mark_notified: Annotated[
+        bool,
+        typer.Option(
+            "--mark-notified", help="Marque les offres affichées comme notifiées après l'écriture."
+        ),
+    ] = False,
+) -> None:
+    """Génère le digest des nouveautés depuis la base, sans collecter."""
+    settings = _settings()
+    cfg = _load(config, settings)
+    path = _db_path(db, settings)
+    if not path.exists():
+        raise _fail("aucune base : lancer d'abord `vigie radar run`")
+    now = datetime.now(UTC)
+    try:
+        store = Store.open(path)
+    except StoreError as exc:
+        raise _fail(str(exc)) from None
+    with store:
+        result = build_digest(store, cfg.digest, now)
+        if not result.should_send:
+            typer.echo("aucune nouvelle offre et aucune source en échec : rien à écrire")
+            return
+        content = render(result)
+        target = output or f"digest.{'html' if cfg.digest.format == 'html' else 'md'}"
+        if target == "-":
+            typer.echo(content, nl=False)
+        else:
+            _write_private(Path(target), content)
+        if mark_notified and result.items:
+            store.mark_notified([item.uid for item in result.items], now)
+    typer.echo(
+        f"digest : {len(result.items)} offre(s) affichée(s) sur {result.total} à notifier"
+        + (" (alerte : une source a échoué)" if result.has_failure else ""),
+        err=target == "-",
+    )
+
+
+def _write_private(path: Path, content: str) -> None:
+    """Écrit le fichier en mode 0600 : il contient les offres retenues, donc des données privées."""
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    if hasattr(os, "fchmod"):  # un fichier déjà présent garderait ses anciens droits
+        os.fchmod(descriptor, 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+        handle.write(content)
 
 
 @root.callback()
