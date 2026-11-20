@@ -54,6 +54,10 @@ strict = true
 files = ["src/vigie"]
 plugins = ["pydantic.mypy"]
 
+[[tool.mypy.overrides]]
+module = ["boto3.*", "botocore.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]

@@ -1,0 +1,73 @@
+name: radar
+
+# Collecte quotidienne des offres : voir docs/aws-setup.md pour la mise en place (bucket S3, rôle
+# IAM par OIDC, environnement GitHub « radar »).
+#
+# La planification est livrée COMMENTÉE pour que les forks ne l'exécutent pas par erreur.
+# La décommenter une fois le workflow validé à la main (Actions > radar > Run workflow).
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: "17 5 * * *"   # tous les jours à 05:17 UTC
+
+permissions:
+  contents: read
+  id-token: write
+
+# Une seule exécution à la fois : l'état S3 est lu puis réécrit.
+concurrency:
+  group: radar
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    if: github.repository == 'HLeviel/vigie'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Les secrets vivent dans l'environnement « radar », pas en secrets de dépôt.
+    environment: radar
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      # Aucune clé AWS stockée : jeton OIDC échangé contre un rôle limité au bucket d'état.
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - run: uv sync --locked --no-dev
+      # Les secrets ne sont exposés qu'aux deux étapes qui en ont besoin (jamais au job entier,
+      # donc jamais aux actions tierces ci-dessus). Les logs n'affichent que des compteurs.
+      - name: Vérifier la configuration et les secrets
+        run: uv run vigie radar check --ci
+        env:
+          ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
+          ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
+          IMAP_HOST: ${{ secrets.IMAP_HOST }}
+          IMAP_USER: ${{ secrets.IMAP_USER }}
+          IMAP_PASSWORD: ${{ secrets.IMAP_PASSWORD }}
+          IMAP_FOLDER: ${{ secrets.IMAP_FOLDER }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          DIGEST_TO: ${{ secrets.DIGEST_TO }}
+          VIGIE_STATE_BUCKET: ${{ secrets.VIGIE_STATE_BUCKET }}
+          VIGIE_RADAR_CONFIG: ${{ secrets.VIGIE_RADAR_CONFIG }}
+      - name: Collecter, envoyer le digest et synchroniser l'état
+        run: uv run vigie radar run
+        env:
+          ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
+          ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
+          IMAP_HOST: ${{ secrets.IMAP_HOST }}
+          IMAP_USER: ${{ secrets.IMAP_USER }}
+          IMAP_PASSWORD: ${{ secrets.IMAP_PASSWORD }}
+          IMAP_FOLDER: ${{ secrets.IMAP_FOLDER }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          DIGEST_TO: ${{ secrets.DIGEST_TO }}
+          VIGIE_STATE_BUCKET: ${{ secrets.VIGIE_STATE_BUCKET }}
+          VIGIE_RADAR_CONFIG: ${{ secrets.VIGIE_RADAR_CONFIG }}
