@@ -83,20 +83,24 @@ def test_search_query_defaults() -> None:
 
 
 def test_search_query_zone_rules() -> None:
+    kw = ["python"]
     with pytest.raises(ValidationError):
-        SearchQuery(name="x", departments=["69"], commune="69123", distance_km=10)
+        SearchQuery(name="x", keywords=kw, departments=["69"], commune="69123", distance_km=10)
     with pytest.raises(ValidationError):
-        SearchQuery(name="x", commune="69123")
+        SearchQuery(name="x", keywords=kw, commune="69123")
     with pytest.raises(ValidationError):
-        SearchQuery(name="x", distance_km=10)
-    assert SearchQuery(name="x", commune="69123", distance_km=10).distance_km == 10
+        SearchQuery(name="x", keywords=kw, distance_km=10)
+    q = SearchQuery(name="x", keywords=kw, commune="69123", distance_km=10)
+    assert q.distance_km == 10
 
 
-def test_search_query_without_zone_requires_keyword() -> None:
+def test_search_query_requires_keyword() -> None:
     with pytest.raises(ValidationError):
         SearchQuery(name="x")
     with pytest.raises(ValidationError):
-        SearchQuery(name="x", contract_types=[ContractType.CDI])
+        SearchQuery(name="x", departments=["69"])
+    with pytest.raises(ValidationError):
+        SearchQuery(name="x", keywords=[], contract_types=[ContractType.CDI])
 
 
 def test_search_query_without_zone_warns(caplog: pytest.LogCaptureFixture) -> None:
@@ -110,16 +114,16 @@ def test_search_query_without_zone_warns(caplog: pytest.LogCaptureFixture) -> No
 
 def test_search_query_with_zone_does_not_warn(caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level(logging.WARNING, logger="vigie.radar.models"):
-        SearchQuery(name="x", departments=["69"])
-        SearchQuery(name="x", commune="69123", distance_km=10)
+        SearchQuery(name="x", keywords=["a"], departments=["69"])
+        SearchQuery(name="x", keywords=["a"], commune="69123", distance_km=10)
     assert caplog.records == []
 
 
 def test_search_query_rejects_bad_values() -> None:
     with pytest.raises(ValidationError):
-        SearchQuery(name="x", max_age_days=0)
+        SearchQuery(name="x", keywords=["a"], max_age_days=0)
     with pytest.raises(ValidationError):
-        SearchQuery(name="x", contract_types=["CDX"])  # type: ignore[list-item]
+        SearchQuery(name="x", keywords=["a"], contract_types=["CDX"])  # type: ignore[list-item]
 
 
 def test_run_report() -> None:

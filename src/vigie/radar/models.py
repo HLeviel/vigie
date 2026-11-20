@@ -118,7 +118,7 @@ class SearchQuery(BaseModel):
     """Une recherche : mots-clés, zone, types de contrat, ancienneté maximale."""
 
     name: str = Field(min_length=1)
-    keywords: list[str] = Field(default_factory=list)
+    keywords: list[str] = Field(min_length=1)
     departments: list[str] = Field(default_factory=list)
     commune: str | None = None
     distance_km: int | None = Field(default=None, gt=0)
@@ -134,8 +134,6 @@ class SearchQuery(BaseModel):
         if self.distance_km is not None and not self.commune:
             raise ValueError("zone : distance_km requiert une commune")
         if not self.departments and not self.commune:
-            if not self.keywords:
-                raise ValueError("une recherche sans zone exige au moins un mot-clé")
             # Message volontairement sans nom ni critère : les logs Actions sont publics.
             logger.warning("Une recherche n'a pas de zone géographique : toute la France.")
         return self

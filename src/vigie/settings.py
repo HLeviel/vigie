@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     # France Travail (lot M1)
     ft_client_id: SecretStr | None = None
     ft_client_secret: SecretStr | None = None
+    # Scope OAuth2 : non secret, à aligner sur la documentation de l'application francetravail.io
+    ft_scope: str = "api_offresdemploiv2 o2dsoffre"
 
     # Adzuna (lot M2)
     adzuna_app_id: SecretStr | None = None

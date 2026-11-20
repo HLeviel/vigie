@@ -46,12 +46,12 @@ La collecte, le dédoublonnage et les filtres appartiennent à `radar`. Les troi
 
 | Module | Rôle | Statut |
 |---|---|---|
-| `radar` | Veille quotidienne des offres, sans LLM | En cours (modèles et normalisation ; aucune source ni collecte) |
+| `radar` | Veille quotidienne des offres, sans LLM | En cours (modèles, normalisation, source France Travail non testée sur l'API réelle) |
 | `match` | Score offre/CV en 3 étages, évaluation precision@k | Prévu |
 | `cv` | CV et lettre adaptés, packagés en Agent Skill | Prévu |
 | `agent` | Agent LangChain, validation humaine avant action | Prévu |
 
-Aucun module n'est encore fonctionnel : `radar` n'a pour l'instant que son squelette, ses modèles de données et ses fonctions de normalisation (aucune collecte). Ce tableau sera mis à jour à chaque avancée réelle.
+Aucun module n'est encore fonctionnel : `radar` n'a pour l'instant que son squelette, ses modèles de données, ses fonctions de normalisation et une source France Travail écrite sans accès à l'API (non vérifiée). Ce tableau sera mis à jour à chaque avancée réelle.
 
 ## Démarrage rapide
 
@@ -68,7 +68,7 @@ Variables d'environnement (voir [`.env.example`](.env.example)) :
 
 | Variable | Usage |
 |---|---|
-| `FT_CLIENT_ID`, `FT_CLIENT_SECRET` | API France Travail |
+| `FT_CLIENT_ID`, `FT_CLIENT_SECRET`, `FT_SCOPE` (facultatif) | API France Travail |
 | `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` | API Adzuna (lot M2) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `DIGEST_TO` | Envoi du digest (lot M2) |
 | `VIGIE_STATE_BUCKET` | Bucket S3 privé de l'état (lot M2) |
