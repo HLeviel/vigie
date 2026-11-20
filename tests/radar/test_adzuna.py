@@ -8,6 +8,7 @@ import httpx
 import pytest
 import respx
 
+from tests.radar.factories import make_config
 from vigie.radar.geo import department_code_from_name, department_name
 from vigie.radar.http import SourceHttpClient, SourceHttpError
 from vigie.radar.models import ContractType, RemoteMode, SearchQuery
@@ -69,7 +70,7 @@ def test_missing_secrets_are_named() -> None:
 
 def test_registered() -> None:
     assert "adzuna" in available()
-    assert build("adzuna", make_settings()).name == "adzuna"
+    assert build("adzuna", make_settings(), make_config()).name == "adzuna"
 
 
 # --- mapping ---------------------------------------------------------------------------------

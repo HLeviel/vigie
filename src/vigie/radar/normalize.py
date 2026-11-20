@@ -106,7 +106,10 @@ def compute_dedup_key(
 
 # Ordre significatif : le premier motif trouvé l'emporte.
 _CONTRACT_PATTERNS: list[tuple[str, str]] = [
-    (r"\balternance\b|\bapprentissage\b|\bprofessionnalisation\b", "ALTERNANCE"),
+    (
+        r"\balternance\b|\bapprentissage\b|\bprofessionnalisation\b|\bapprenti(?:e|s|es)?\b",
+        "ALTERNANCE",
+    ),
     (r"\bstage\b|\bstagiaire\b", "STAGE"),
     (r"\bfreelance\b|\bind[eé]pendant\b|\blib[eé]rale?\b|\bportage\b", "FREELANCE"),
     (r"\bint[eé]rim\b|\bmission int[eé]rimaire\b|\bmis\b", "INTERIM"),
@@ -124,6 +127,15 @@ def parse_contract_type(label: str | None) -> str:
         if re.search(pattern, text):
             return value
     return "AUTRE"
+
+
+def contract_from_title(title: str | None) -> str | None:
+    """Type de contrat explicite du titre (alternance, stage, intérim, freelance), sinon ``None``.
+
+    Seuls les types explicites comptent : « CDI » ou « CDD » dans un titre ne prouvent rien ici.
+    """
+    value = parse_contract_type(title)
+    return value if value in {"ALTERNANCE", "STAGE", "INTERIM", "FREELANCE"} else None
 
 
 # --- Salaire -------------------------------------------------------------------------------

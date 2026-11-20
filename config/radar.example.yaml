@@ -3,11 +3,11 @@
 
 sources:
   adzuna: { enabled: true }
-  ats: { enabled: true }              # pas encore implémentée : ignorée avec un avertissement
+  ats: { enabled: true }              # greenhouse, lever, ashby, smartrecruiters, recruitee
   email_alerts: { enabled: true }     # pas encore implémentée : ignorée avec un avertissement
   france_travail: { enabled: false }  # en attente d'accès
 
-ats_companies:                         # entreprises FICTIVES
+ats_companies:                         # entreprises FICTIVES ; `token` = identifiant de la page carrières
   - { name: "Exemple IA", platform: greenhouse, token: "exempleia" }
   - { name: "Startup Data", platform: lever, token: "startupdata" }
 

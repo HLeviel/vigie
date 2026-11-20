@@ -74,5 +74,5 @@ class FakeSource:
             raise self._error
 
 
-def factory(source: FakeSource) -> Callable[[Settings], FakeSource]:
-    return lambda settings: source
+def factory(source: FakeSource) -> Callable[[Settings, RadarConfig], FakeSource]:
+    return lambda settings, config: source
