@@ -16,6 +16,11 @@ from vigie import __version__
 
 logger = logging.getLogger(__name__)
 
+# httpx journalise l'URL complète (paramètres compris, donc ``app_key``) au niveau INFO.
+# Nos propres logs passent par ``mask_url`` ; on coupe ceux des bibliothèques.
+for _name in ("httpx", "httpcore"):
+    logging.getLogger(_name).setLevel(logging.WARNING)
+
 USER_AGENT = f"vigie-radar/{__version__} (+https://github.com/HLeviel/vigie)"
 TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 MAX_ATTEMPTS = 3
