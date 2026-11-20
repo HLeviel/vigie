@@ -256,6 +256,26 @@ class Store:
         data["raw"] = json.loads(data["raw"])
         return Offer(**data)
 
+    # --- emails traités ----------------------------------------------------------------------
+
+    def email_processed(self, message_id: str) -> bool:
+        row = self._conn.execute(
+            "SELECT 1 FROM processed_emails WHERE message_id = ?", (message_id,)
+        ).fetchone()
+        return row is not None
+
+    def mark_email_processed(
+        self, message_id: str, sender_key: str, now: datetime, offers_extracted: int
+    ) -> None:
+        self._conn.execute(
+            "INSERT OR REPLACE INTO processed_emails "
+            "(message_id, sender_key, processed_at, offers_extracted) VALUES (?, ?, ?, ?)",
+            (message_id, sender_key, _iso(now), offers_extracted),
+        )
+
+    def count_processed_emails(self) -> int:
+        return int(self._conn.execute("SELECT COUNT(*) FROM processed_emails").fetchone()[0])
+
     # --- runs ------------------------------------------------------------------------------
 
     def start_run(self, run_id: str, started_at: datetime) -> None:

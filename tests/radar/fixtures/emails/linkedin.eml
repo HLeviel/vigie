@@ -1,0 +1,35 @@
+From: LinkedIn Job Alerts <jobalerts-noreply@linkedin.com>
+To: candidat@example.org
+Subject: Offres pour =?utf-8?q?=C2=AB_ing=C3=A9nieur_ia_=C2=BB?=
+Date: Thu, 19 Nov 2026 07:30:00 +0000
+Message-ID: <li-1@example.org>
+MIME-Version: 1.0
+Content-Type: multipart/alternative;
+ boundary="===============3463070128958502814=="
+
+--===============3463070128958502814==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Version texte de l'alerte.
+
+--===============3463070128958502814==
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<html><head><title>Alerte</title><style>p{color:red}</style></head><body><tab=
+le><tr><td><a href=3D"https://www.linkedin.com/comm/jobs/view/4000000001/?tra=
+ckingId=3DXYZ&refId=3DABC&lipi=3Durn">Ing=C3=A9nieur IA</a><div>Soci=C3=A9t=
+=C3=A9 A</div><div>Lyon, Auvergne-Rh=C3=B4ne-Alpes, France</div><div>Il y a 2=
+ jours</div><a href=3D"https://www.linkedin.com/comm/jobs/view/4000000001/?tr=
+ackingId=3DXYZ&refId=3DABC&lipi=3Durn">Voir l'offre</a></td></tr></table><tab=
+le><tr><td><a href=3D"https://www.linkedin.com/comm/jobs/view/senior-ml-engin=
+eer-at-exemple-4000000002?trackingId=3DXYZ">Senior ML Engineer</a><div>Soci=
+=C3=A9t=C3=A9 B</div><div>Paris, =C3=8Ele-de-France, France</div><div>Il y a =
+1 jour</div><a href=3D"https://www.linkedin.com/comm/jobs/view/senior-ml-engi=
+neer-at-exemple-4000000002?trackingId=3DXYZ">Voir l'offre</a></td></tr></tabl=
+e><p><a href=3D"https://alertes.example.org/desabonnement?token=3DSECRET123">=
+Se d=C3=A9sabonner</a></p></body></html>
+
+--===============3463070128958502814==--

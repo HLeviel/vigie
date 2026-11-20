@@ -7,3 +7,5 @@
 `adzuna_edge_cases.json` est **synthétique** : il couvre des cas absents de la réponse réelle (salaire estimé, description HTML, alternance, offre minimale).
 
 Les fichiers `ats_*.json` (Greenhouse, Lever, Ashby, SmartRecruiters, Recruitee) reprennent la **structure vérifiée le 20/11/2026 sur de vraies réponses des API publiques** (noms et types de champs, formats de dates, entités HTML de Greenhouse, `createdAt` en millisecondes de Lever…). Toutes les **valeurs sont fictives** (entreprises, identifiants, textes). Les valeurs de `salary` de Recruitee sont inventées : aucune offre réelle observée n'en renseignait.
+
+Les `.eml` du dossier `emails/` sont **synthétiques et non vérifiés** (voir `emails/README.md`) : aucune vraie alerte n'était disponible.

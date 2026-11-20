@@ -15,6 +15,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 REQUIRED_BY_FEATURE: dict[str, tuple[str, ...]] = {
     "france_travail": ("FT_CLIENT_ID", "FT_CLIENT_SECRET"),
     "adzuna": ("ADZUNA_APP_ID", "ADZUNA_APP_KEY"),
+    "imap": ("IMAP_HOST", "IMAP_USER", "IMAP_PASSWORD", "IMAP_FOLDER"),
     "email": ("SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD", "DIGEST_TO"),
     "state_s3": ("VIGIE_STATE_BUCKET",),
 }
@@ -42,6 +43,12 @@ class Settings(BaseSettings):
     # Adzuna (lot M2)
     adzuna_app_id: SecretStr | None = None
     adzuna_app_key: SecretStr | None = None
+
+    # Lecture des alertes email (lecture seule ; mot de passe d'application)
+    imap_host: str | None = None
+    imap_user: SecretStr | None = None
+    imap_password: SecretStr | None = None
+    imap_folder: str | None = None
 
     # Envoi du digest (lot M2)
     smtp_host: str | None = None

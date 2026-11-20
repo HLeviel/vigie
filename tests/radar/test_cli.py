@@ -21,7 +21,6 @@ runner = CliRunner()
 CONFIG = """
 sources:
   adzuna: { enabled: true }
-  email_alerts: { enabled: true }
   france_travail: { enabled: true }
 searches:
   - { name: confidentiel, keywords: [python-secret], departments: ['69'] }
@@ -63,7 +62,6 @@ def test_check_ok_and_statuses(env: dict[str, Path]) -> None:
     assert result.exit_code == 0, result.output
     assert "configuration valide : 1 recherche" in result.output
     assert "source adzuna : active" in result.output
-    assert "source email_alerts : pas encore implémentée" in result.output
     assert "source france_travail : en attente d'accès" in result.output
     assert "secrets : présents" in result.output
 
@@ -176,9 +174,6 @@ def test_dry_run_does_not_modify_an_existing_database(
 def test_exit_code_3_when_a_source_fails(
     env: dict[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    env["config"].write_text(
-        CONFIG.replace("email_alerts: { enabled: true }", "email_alerts: { enabled: false }")
-    )
     monkeypatch.setattr(
         cli, "_settings", lambda: make_settings(ft_client_id="i", ft_client_secret="s")
     )
@@ -294,3 +289,41 @@ def test_check_ats_without_companies(env: dict[str, Path]) -> None:
     )
     result = runner.invoke(cli.root, ["radar", "check", *args(env)])
     assert "aucune entreprise dans ats_companies" in result.output
+
+
+def test_check_not_implemented_source_is_reported(
+    env: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env["config"].write_text(
+        CONFIG.replace("sources:\n", "sources:\n  ats: { enabled: true }\n", 1)
+    )
+    monkeypatch.delitem(source_registry.REGISTRY, "ats")
+    result = runner.invoke(cli.root, ["radar", "check", *args(env)])
+    assert "source ats : pas encore implémentée" in result.output
+
+
+def test_check_email_alerts_needs_imap_variables(
+    env: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env["config"].write_text(
+        CONFIG.replace("sources:\n", "sources:\n  email_alerts: { enabled: true }\n", 1)
+    )
+    missing = runner.invoke(cli.root, ["radar", "check", *args(env)])
+    assert missing.exit_code == 1
+    for name in ("IMAP_HOST", "IMAP_USER", "IMAP_PASSWORD", "IMAP_FOLDER"):
+        assert name in missing.output
+    monkeypatch.setattr(
+        cli,
+        "_settings",
+        lambda: make_settings(
+            imap_host="imap.example.org",
+            imap_user="valeur-cachee",
+            imap_password="mot-de-passe-secret",
+            imap_folder="Vigie",
+        ),
+    )
+    ok = runner.invoke(cli.root, ["radar", "check", *args(env)])
+    assert ok.exit_code == 0, ok.output
+    assert "source email_alerts : active" in ok.output
+    assert "valeur-cachee" not in ok.output
+    assert "mot-de-passe-secret" not in ok.output

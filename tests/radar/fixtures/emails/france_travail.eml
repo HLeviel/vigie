@@ -1,0 +1,34 @@
+From: Alertes <alerte@francetravail.fr>
+To: candidat@example.org
+Subject: Votre alerte emploi
+Date: Thu, 19 Nov 2026 07:30:00 +0000
+Message-ID: <ft-1@example.org>
+MIME-Version: 1.0
+Content-Type: multipart/alternative;
+ boundary="===============2861057452421223428=="
+
+--===============2861057452421223428==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Version texte de l'alerte.
+
+--===============2861057452421223428==
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<html><head><title>Alerte</title><style>p{color:red}</style></head><body><tab=
+le><tr><td><a href=3D"https://candidat.francetravail.fr/offres/recherche/deta=
+il/190AAAA?utm_source=3Dalerte&trackingId=3Dabc">Data Engineer (H/F)</a><div>=
+Exemple SA</div><div>69 - LYON 03</div><div>Pipelines Python et SQL.</div><a =
+href=3D"https://candidat.francetravail.fr/offres/recherche/detail/190AAAA?utm=
+_source=3Dalerte&trackingId=3Dabc">Voir l'offre</a></td></tr></table><table><=
+tr><td><a href=3D"https://candidat.francetravail.fr/offres/recherche/detail/1=
+90BBBB">D=C3=A9veloppeur IA</a><div>Autre SAS</div><div>75 - PARIS 08</div><d=
+iv>Projet IA g=C3=A9n=C3=A9rative.</div><a href=3D"https://candidat.francetra=
+vail.fr/offres/recherche/detail/190BBBB">Voir l'offre</a></td></tr></table><p=
+><a href=3D"https://alertes.example.org/desabonnement?token=3DSECRET123">Se d=
+=C3=A9sabonner</a></p></body></html>
+
+--===============2861057452421223428==--

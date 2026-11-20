@@ -1,0 +1,27 @@
+From: Welcome to the Jungle <alerts@mail.welcometothejungle.com>
+To: candidat@example.org
+Subject: Jobs pour vous
+Date: Thu, 19 Nov 2026 07:30:00 +0000
+Message-ID: <wttj-1@example.org>
+MIME-Version: 1.0
+Content-Type: multipart/alternative;
+ boundary="===============0625925341607553524=="
+
+--===============0625925341607553524==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Version texte de l'alerte.
+
+--===============0625925341607553524==
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<html><head><title>Alerte</title><style>p{color:red}</style></head><body><a h=
+ref=3D"https://www.welcometothejungle.com/fr/companies/exemple-ia/jobs/data-s=
+cientist_lyon?trk=3Demail">Data Scientist</a><div>Lyon</div><p><a href=3D"htt=
+ps://alertes.example.org/desabonnement?token=3DSECRET123">Se d=C3=A9sabonner<=
+/a></p></body></html>
+
+--===============0625925341607553524==--

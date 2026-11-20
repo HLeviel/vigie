@@ -140,3 +140,15 @@ def test_naive_free_utc_roundtrip(store: Store) -> None:
     store.insert_offer(make_offer(published_at=datetime(2026, 1, 2, 3, 4, tzinfo=UTC)), NOW)
     [back] = store.pending_offers()
     assert back.published_at == datetime(2026, 1, 2, 3, 4, tzinfo=UTC)
+
+
+def test_processed_emails(store: Store) -> None:
+    assert not store.email_processed("<a@x>")
+    store.mark_email_processed("<a@x>", "apec", NOW, 3)
+    store.mark_email_processed("<a@x>", "apec", NOW, 4)  # idempotent (remplace)
+    assert store.email_processed("<a@x>")
+    assert store.count_processed_emails() == 1
+    row = store._conn.execute(
+        "SELECT sender_key, offers_extracted FROM processed_emails"
+    ).fetchone()
+    assert (row["sender_key"], row["offers_extracted"]) == ("apec", 4)

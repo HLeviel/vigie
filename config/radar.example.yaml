@@ -4,7 +4,7 @@
 sources:
   adzuna: { enabled: true }
   ats: { enabled: true }              # greenhouse, lever, ashby, smartrecruiters, recruitee
-  email_alerts: { enabled: true }     # pas encore implémentée : ignorée avec un avertissement
+  email_alerts: { enabled: true }     # exige IMAP_HOST, IMAP_USER, IMAP_PASSWORD, IMAP_FOLDER ; sinon mettre false
   france_travail: { enabled: false }  # en attente d'accès
 
 ats_companies:                         # entreprises FICTIVES ; `token` = identifiant de la page carrières

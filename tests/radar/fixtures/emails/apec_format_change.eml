@@ -1,0 +1,26 @@
+From: APEC <noreply@apec.fr>
+To: candidat@example.org
+Subject: Nouvelles offres
+Date: Thu, 19 Nov 2026 07:30:00 +0000
+Message-ID: <apec-2@example.org>
+MIME-Version: 1.0
+Content-Type: multipart/alternative;
+ boundary="===============2270811342498659557=="
+
+--===============2270811342498659557==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Version texte de l'alerte.
+
+--===============2270811342498659557==
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<html><head><title>Alerte</title><style>p{color:red}</style></head><body><p>N=
+ouveau design !</p><a href=3D"https://click.apec.example/r/12345">Voir mes of=
+fres</a><p><a href=3D"https://alertes.example.org/desabonnement?token=3DSECRE=
+T123">Se d=C3=A9sabonner</a></p></body></html>
+
+--===============2270811342498659557==--

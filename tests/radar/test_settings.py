@@ -43,3 +43,11 @@ def test_no_default_for_secrets(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_require_passes_when_present() -> None:
     make(ft_client_id="a", ft_client_secret="b").require(["france_travail"])
+
+
+def test_imap_variables_are_required_together_and_masked() -> None:
+    s = make(imap_host="imap.example.org", imap_user="moi", imap_password=SENTINEL)
+    assert s.missing(["imap"]) == ["IMAP_FOLDER"]
+    assert SENTINEL not in repr(s)
+    assert SENTINEL not in s.model_dump_json()
+    assert "moi" not in repr(s)  # l'identifiant est aussi un SecretStr

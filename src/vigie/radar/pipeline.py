@@ -16,14 +16,14 @@ from vigie.radar.dedup import Outcome, classify
 from vigie.radar.filters import FilterSet
 from vigie.radar.models import RunReport, SourceReport
 from vigie.radar.sources import SourceFactory
-from vigie.radar.sources.base import Source
+from vigie.radar.sources.base import Source, StoreAware
 from vigie.radar.store import Store
 from vigie.settings import Settings
 
 logger = logging.getLogger(__name__)
 
 # Source du registre -> fonctionnalité de ``settings`` dont elle dépend.
-SOURCE_FEATURE = {"adzuna": "adzuna", "france_travail": "france_travail"}
+SOURCE_FEATURE = {"adzuna": "adzuna", "france_travail": "france_travail", "email_alerts": "imap"}
 
 EXIT_OK = 0
 EXIT_CONFIG = 1
@@ -124,6 +124,8 @@ def run_pipeline(
         began = monotonic()
         try:
             source: Source = registry[name](settings, config)
+            if isinstance(source, StoreAware):
+                source.attach_store(store)
             _collect(source, config, store, filters, report, since, now)
             report.errors += int(getattr(source, "skipped", 0))
         except Exception as exc:
