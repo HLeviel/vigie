@@ -21,7 +21,9 @@ from vigie.radar.sources.adzuna import (
 )
 from vigie.settings import MissingSettingsError, Settings
 
-FIXTURE = Path(__file__).parent / "fixtures" / "adzuna_search.json"
+FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURE = FIXTURES / "adzuna_search.json"  # vraie réponse anonymisée
+EDGE_FIXTURE = FIXTURES / "adzuna_edge_cases.json"  # cas synthétiques
 URL = "https://api.adzuna.com/v1/api/jobs/fr/search/1"
 NOW = datetime(2026, 11, 20, 6, 0, tzinfo=UTC)
 SINCE = NOW - timedelta(days=1)
@@ -31,6 +33,11 @@ APP_KEY = "s3cr3t-valeur-de-test"
 
 def fixture_body() -> dict[str, Any]:
     data: dict[str, Any] = json.loads(FIXTURE.read_text())
+    return data
+
+
+def edge_body() -> dict[str, Any]:
+    data: dict[str, Any] = json.loads(EDGE_FIXTURE.read_text())
     return data
 
 
@@ -68,23 +75,34 @@ def test_registered() -> None:
 # --- mapping ---------------------------------------------------------------------------------
 
 
-def test_mapping_full_offer() -> None:
-    offer = offer_from_raw(fixture_body()["results"][0], NOW)
-    assert offer.uid == "adzuna:4400001"
-    assert offer.title == "Data Engineer Python H/F"
-    assert offer.company == "Exemple SA"
-    assert offer.location_label == "Lyon, Rhône"
-    assert offer.department == "69"
-    assert offer.contract_type is ContractType.CDI
-    assert (offer.salary_min, offer.salary_max) == (45000, 55000)
-    assert offer.remote is RemoteMode.PARTIAL
-    assert offer.published_at == datetime(2026, 11, 18, 8, 15, tzinfo=UTC)
-    assert "utm_medium=api" in str(offer.url)
-    assert offer.raw["id"] == "4400001"
+def test_real_response_every_offer_maps() -> None:
+    results = fixture_body()["results"]
+    offers = [offer_from_raw(raw, NOW) for raw in results]
+    assert len(offers) == 10
+    assert {o.department for o in offers} == {"69"}  # area : France, région, Rhône, Lyon...
+    assert all(o.company and o.company.startswith("Société") for o in offers)
+    assert all(o.description.endswith("…") for o in offers)
+    assert all("utm_source=00000000" in str(o.url) for o in offers)
+
+
+def test_real_response_salary_contract_and_dates() -> None:
+    offers = [offer_from_raw(raw, NOW) for raw in fixture_body()["results"]]
+    first = offers[0]
+    assert first.uid == "adzuna:7100000001"
+    assert first.title == "Ingénieure / Ingénieur IA"
+    assert first.location_label == "Villeurbanne, Lyon"
+    assert (first.salary_min, first.salary_max) == (65000, 95000)
+    assert first.contract_type is ContractType.AUTRE  # pas de contract_type dans la réponse
+    assert first.published_at == datetime(2026, 11, 1, 19, 3, 55, tzinfo=UTC)
+    assert first.remote is RemoteMode.UNKNOWN
+    assert offers[1].contract_type is ContractType.CDI  # contract_type = permanent
+    assert (offers[1].salary_min, offers[1].salary_max) == (40000, 40000)
+    assert (offers[2].salary_min, offers[2].salary_max) == (None, None)
+    assert offers[7].contract_type is ContractType.STAGE  # détecté dans le titre
 
 
 def test_predicted_salary_is_ignored_and_html_stripped() -> None:
-    offer = offer_from_raw(fixture_body()["results"][1], NOW)
+    offer = offer_from_raw(edge_body()["results"][1], NOW)
     assert offer.salary_min is None
     assert offer.salary_max is None
     assert offer.description == "Mission de 6 mois.\nFull remote possible."
@@ -94,14 +112,20 @@ def test_predicted_salary_is_ignored_and_html_stripped() -> None:
 
 
 def test_mapping_minimal_offers() -> None:
-    alt = offer_from_raw(fixture_body()["results"][2], NOW)
+    alt = offer_from_raw(edge_body()["results"][2], NOW)
     assert alt.contract_type is ContractType.ALTERNANCE
     assert alt.description == ""
     assert alt.department is None
-    bare = offer_from_raw(fixture_body()["results"][3], NOW)
+    bare = offer_from_raw(edge_body()["results"][3], NOW)
     assert bare.company is None
     assert bare.location_label is None
     assert bare.contract_type is ContractType.AUTRE
+
+
+def test_edge_fixture_annual_offer() -> None:
+    offer = offer_from_raw(edge_body()["results"][0], NOW)
+    assert offer.remote is RemoteMode.PARTIAL
+    assert (offer.salary_min, offer.salary_max) == (45000, 55000)
 
 
 @pytest.mark.parametrize(
@@ -136,7 +160,7 @@ def test_geo_helpers() -> None:
 def test_search_params_and_headers() -> None:
     route = respx.get(URL).mock(return_value=httpx.Response(200, json=fixture_body()))
     offers = list(make_source().fetch(query(), SINCE))
-    assert [o.source_id for o in offers] == ["4400001", "4400002", "4400003", "4400004"]
+    assert [o.source_id for o in offers] == [f"71000000{i:02d}" for i in range(1, 11)]
     request = route.calls.last.request
     params = dict(request.url.params)
     assert params["what"] == "python"
@@ -144,6 +168,7 @@ def test_search_params_and_headers() -> None:
     assert params["max_days_old"] == "1"
     assert params["results_per_page"] == "50"
     assert params["app_id"] == APP_ID
+    assert params["content-type"] == "application/json"
     assert request.headers["Accept"] == "application/json"
     assert request.headers["User-Agent"].startswith("vigie-radar/")
 
@@ -243,7 +268,7 @@ def test_duplicates_and_invalid_items_are_skipped() -> None:
         return_value=httpx.Response(200, json={"results": [good, good, bad, no_date, {"x": 1}]})
     )
     source = make_source()
-    assert [o.source_id for o in source.fetch(query(), SINCE)] == ["4400001"]
+    assert [o.source_id for o in source.fetch(query(), SINCE)] == ["7100000001"]
     assert source.skipped == 2
 
 
@@ -295,7 +320,10 @@ def test_secrets_masked_after_server_error(caplog: pytest.LogCaptureFixture) -> 
     assert APP_KEY not in caplog.text + str(exc.value)
 
 
-def test_fixture_contains_no_secret_or_personal_data() -> None:
-    text = FIXTURE.read_text()
+@pytest.mark.parametrize("path", [FIXTURE, EDGE_FIXTURE])
+def test_fixtures_contain_no_secret_or_personal_data(path: Path) -> None:
+    text = path.read_text()
     assert APP_KEY not in text
     assert "@" not in text
+    assert "adref" not in text
+    assert "eyJ" not in text  # jetons JWT

@@ -1,58 +1,332 @@
 {
-  "__CLASS__": "Adzuna::API::Response::JobSearchResults",
-  "count": 4,
-  "mean": 52000,
   "results": [
     {
-      "__CLASS__": "Adzuna::API::Response::Job",
-      "id": "4400001",
-      "title": "Data Engineer Python H/F",
-      "description": "Au sein de l'equipe data, vous developpez des pipelines Python. 2 jours de teletravail ...",
-      "created": "2026-11-18T08:15:00Z",
-      "redirect_url": "https://www.adzuna.fr/land/ad/4400001?utm_medium=api&utm_source=exemple",
-      "company": {"__CLASS__": "Adzuna::API::Response::Company", "display_name": "Exemple SA"},
+      "title": "Ingénieure / Ingénieur IA",
+      "redirect_url": "https://www.adzuna.fr/details/7100000001?utm_medium=api&utm_source=00000000",
+      "salary_min": 65000,
+      "salary_max": 95000,
+      "latitude": 45.76471,
       "location": {
-        "__CLASS__": "Adzuna::API::Response::Location",
-        "area": ["France", "Auvergne-Rhone-Alpes", "Rhône", "Lyon"],
-        "display_name": "Lyon, Rhône"
+        "display_name": "Villeurbanne, Lyon",
+        "area": [
+          "France",
+          "Auvergne-Rhône-Alpes",
+          "Rhône",
+          "Lyon",
+          "Villeurbanne"
+        ],
+        "__CLASS__": "Adzuna::API::Response::Location"
       },
-      "category": {"__CLASS__": "Adzuna::API::Response::Category", "label": "Emplois Informatique", "tag": "it-jobs"},
-      "contract_type": "permanent",
-      "contract_time": "full_time",
-      "salary_min": 45000,
-      "salary_max": 55000,
       "salary_is_predicted": "0",
-      "latitude": 45.76,
-      "longitude": 4.84
-    },
-    {
       "__CLASS__": "Adzuna::API::Response::Job",
-      "id": "4400002",
-      "title": "Developpeur Machine Learning",
-      "description": "<p>Mission de 6 mois.</p><p>Full remote possible.</p>",
-      "created": "2026-11-19T10:00:00Z",
-      "redirect_url": "https://www.adzuna.fr/land/ad/4400002",
-      "company": {"display_name": "Autre SAS"},
-      "location": {"area": ["France", "Ile-de-France", "Paris", "Paris"], "display_name": "Paris, Ile-de-France"},
-      "contract_type": "contract",
-      "salary_min": 62000.0,
-      "salary_max": 62000.0,
-      "salary_is_predicted": 1
+      "company": {
+        "display_name": "Société A",
+        "__CLASS__": "Adzuna::API::Response::Company"
+      },
+      "longitude": 4.88039,
+      "category": {
+        "tag": "other-general-jobs",
+        "label": "Emplois Autres/Général",
+        "__CLASS__": "Adzuna::API::Response::Category"
+      },
+      "description": "Texte d'annonce fictif n°1 : l’entreprise recherche un profil intelligence artificielle pour concevoir, expérimenter et mettre en production des solutions. Vos missions : analyser les besoins, développer des prototypes, évaluer des modèles et accompagner les équipes métiers dans leur adoption de l’IA…",
+      "id": "7100000001",
+      "created": "2026-11-01T19:03:55Z",
+      "contract_time": "full_time"
     },
     {
-      "id": "4400003",
-      "title": "Alternance Data Analyst",
-      "description": "",
-      "created": "2026-11-17T09:00:00Z",
-      "redirect_url": "https://www.adzuna.fr/land/ad/4400003",
-      "location": {"area": ["France"], "display_name": "France"},
+      "title": "Ingénieur IA F/H",
+      "redirect_url": "https://www.adzuna.fr/details/7100000002?utm_medium=api&utm_source=00000000",
+      "salary_min": 40000,
+      "salary_max": 40000,
+      "latitude": 45.72035,
+      "location": {
+        "display_name": "Lyon, Rhône",
+        "area": [
+          "France",
+          "Auvergne-Rhône-Alpes",
+          "Rhône",
+          "Lyon"
+        ],
+        "__CLASS__": "Adzuna::API::Response::Location"
+      },
+      "salary_is_predicted": "0",
+      "__CLASS__": "Adzuna::API::Response::Job",
+      "company": {
+        "display_name": "Société B",
+        "__CLASS__": "Adzuna::API::Response::Company"
+      },
+      "longitude": 5.08666,
+      "category": {
+        "tag": "consultancy-jobs",
+        "label": "Emplois Consultants",
+        "__CLASS__": "Adzuna::API::Response::Category"
+      },
+      "description": "Texte d'annonce fictif n°2 : l’entreprise recherche un profil intelligence artificielle pour concevoir, expérimenter et mettre en production des solutions. Vos missions : analyser les besoins, développer des prototypes, évaluer des modèles et accompagner les équipes métiers dans leur adoption de l’IA…",
+      "id": "7100000002",
+      "created": "2026-11-17T14:17:03Z",
       "contract_type": "permanent"
     },
     {
-      "id": "4400004",
-      "title": "Ingenieur IA",
-      "created": "2026-11-19T12:00:00Z",
-      "redirect_url": "https://www.adzuna.fr/land/ad/4400004"
+      "title": "Ingénieur IA / Cybersécurité offensive",
+      "redirect_url": "https://www.adzuna.fr/details/7100000003?utm_medium=api&utm_source=00000000",
+      "latitude": 45.72035,
+      "location": {
+        "display_name": "Lyon, Rhône",
+        "area": [
+          "France",
+          "Auvergne-Rhône-Alpes",
+          "Rhône",
+          "Lyon"
+        ],
+        "__CLASS__": "Adzuna::API::Response::Location"
+      },
+      "salary_is_predicted": "0",
+      "__CLASS__": "Adzuna::API::Response::Job",
+      "company": {
+        "display_name": "Société C",
+        "__CLASS__": "Adzuna::API::Response::Company"
+      },
+      "longitude": 5.08666,
+      "category": {
+        "tag": "unknown",
+        "label": "Unknown",
+        "__CLASS__": "Adzuna::API::Response::Category"
+      },
+      "description": "Texte d'annonce fictif n°3 : l’entreprise recherche un profil intelligence artificielle pour concevoir, expérimenter et mettre en production des solutions. Vos missions : analyser les besoins, développer des prototypes, évaluer des modèles et accompagner les équipes métiers dans leur adoption de l’IA…",
+      "id": "7100000003",
+      "created": "2026-09-24T01:34:47Z"
+    },
+    {
+      "title": "Ingénieur IA (H/F)",
+      "redirect_url": "https://www.adzuna.fr/details/7100000004?utm_medium=api&utm_source=00000000",
+      "salary_min": 60000,
+      "salary_max": 90000,
+      "latitude": 45.72035,
+      "location": {
+        "display_name": "Lyon, Rhône",
+        "area": [
+          "France",
+          "Auvergne-Rhône-Alpes",
+          "Rhône",
+          "Lyon"
+        ],
+        "__CLASS__": "Adzuna::API::Response::Location"
+      },
+      "salary_is_predicted": "0",
+      "__CLASS__": "Adzuna::API::Response::Job",
+      "company": {
+        "display_name": "Société D",
+        "__CLASS__": "Adzuna::API::Response::Company"
+      },
+      "longitude": 5.08666,
+      "category": {
+        "tag": "other-general-jobs",
+        "label": "Emplois Autres/Général",
+        "__CLASS__": "Adzuna::API::Response::Category"
+      },
+      "description": "Texte d'annonce fictif n°4 : l’entreprise recherche un profil intelligence artificielle pour concevoir, expérimenter et mettre en production des solutions. Vos missions : analyser les besoins, développer des prototypes, évaluer des modèles et accompagner les équipes métiers dans leur adoption de l’IA…",
+      "id": "7100000004",
+      "created": "2026-11-06T06:30:40Z",
+      "contract_time": "full_time"
+    },
+    {
+      "title": "Ingénieur IA (H/F)",
+      "redirect_url": "https://www.adzuna.fr/details/7100000005?utm_medium=api&utm_source=00000000",
+      "salary_min": 55000,
+      "salary_max": 75000,
+      "latitude": 45.72035,
+      "location": {
+        "display_name": "Lyon, Rhône",
+        "area": [
+          "France",
+          "Auvergne-Rhône-Alpes",
+          "Rhône",
+          "Lyon"
+        ],
+        "__CLASS__": "Adzuna::API::Response::Location"
+      },
+      "salary_is_predicted": "0",
+      "__CLASS__": "Adzuna::API::Response::Job",
+      "company": {
+        "display_name": "Société D Corp.",
+        "__CLASS__": "Adzuna::API::Response::Company"
+      },
+      "longitude": 5.08666,
+      "category": {
+        "tag": "legal-jobs",
+        "label": "Emplois Droit",
+        "__CLASS__": "Adzuna::API::Response::Category"
+      },
+      "description": "Texte d'annonce fictif n°5 : l’entreprise recherche un profil intelligence artificielle pour concevoir, expérimenter et mettre en production des solutions. Vos missions : analyser les besoins, développer des prototypes, évaluer des modèles et accompagner les équipes métiers dans leur adoption de l’IA…",
+      "id": "7100000005",
+      "created": "2026-11-11T07:49:29Z",
+      "contract_time": "full_time"
+    },
+    {
+      "title": "Ingénieur IA (AI Engineer) H/F",
+      "redirect_url": "https://www.adzuna.fr/details/7100000006?utm_medium=api&utm_source=00000000",
+      "salary_min": 55000,
+      "salary_max": 75000,
+      "latitude": 45.72035,
+      "location": {
+        "display_name": "Lyon, Rhône",
+        "area": [
+          "France",
+          "Auvergne-Rhône-Alpes",
+          "Rhône",
+          "Lyon"
+        ],
+        "__CLASS__": "Adzuna::API::Response::Location"
+      },
+      "salary_is_predicted": "0",
+      "__CLASS__": "Adzuna::API::Response::Job",
+      "company": {
+        "display_name": "Société E",
+        "__CLASS__": "Adzuna::API::Response::Company"
+      },
+      "longitude": 5.08666,
+      "category": {
+        "tag": "it-jobs",
+        "label": "Emplois Informatique",
+        "__CLASS__": "Adzuna::API::Response::Category"
+      },
+      "description": "Texte d'annonce fictif n°6 : l’entreprise recherche un profil intelligence artificielle pour concevoir, expérimenter et mettre en production des solutions. Vos missions : analyser les besoins, développer des prototypes, évaluer des modèles et accompagner les équipes métiers dans leur adoption de l’IA…",
+      "id": "7100000006",
+      "created": "2026-10-30T01:21:11Z",
+      "contract_time": "full_time"
+    },
+    {
+      "title": "Ingénieur IA / Machine Learning F/H",
+      "redirect_url": "https://www.adzuna.fr/details/7100000007?utm_medium=api&utm_source=00000000",
+      "salary_min": 70000,
+      "salary_max": 95000,
+      "latitude": 45.72035,
+      "location": {
+        "display_name": "Lyon, Rhône",
+        "area": [
+          "France",
+          "Auvergne-Rhône-Alpes",
+          "Rhône",
+          "Lyon"
+        ],
+        "__CLASS__": "Adzuna::API::Response::Location"
+      },
+      "salary_is_predicted": "0",
+      "__CLASS__": "Adzuna::API::Response::Job",
+      "company": {
+        "display_name": "Société F",
+        "__CLASS__": "Adzuna::API::Response::Company"
+      },
+      "longitude": 5.08666,
+      "category": {
+        "tag": "other-general-jobs",
+        "label": "Emplois Autres/Général",
+        "__CLASS__": "Adzuna::API::Response::Category"
+      },
+      "description": "Texte d'annonce fictif n°7 : l’entreprise recherche un profil intelligence artificielle pour concevoir, expérimenter et mettre en production des solutions. Vos missions : analyser les besoins, développer des prototypes, évaluer des modèles et accompagner les équipes métiers dans leur adoption de l’IA…",
+      "id": "7100000007",
+      "created": "2026-10-30T01:22:27Z",
+      "contract_time": "full_time"
+    },
+    {
+      "title": "Stage - Ingénieur IA pour gestion de projet F/H",
+      "redirect_url": "https://www.adzuna.fr/details/7100000008?utm_medium=api&utm_source=00000000",
+      "latitude": 45.76471,
+      "location": {
+        "display_name": "Villeurbanne, Lyon",
+        "area": [
+          "France",
+          "Auvergne-Rhône-Alpes",
+          "Rhône",
+          "Lyon",
+          "Villeurbanne"
+        ],
+        "__CLASS__": "Adzuna::API::Response::Location"
+      },
+      "salary_is_predicted": "0",
+      "__CLASS__": "Adzuna::API::Response::Job",
+      "company": {
+        "display_name": "Société G",
+        "__CLASS__": "Adzuna::API::Response::Company"
+      },
+      "longitude": 4.88039,
+      "category": {
+        "tag": "unknown",
+        "label": "Unknown",
+        "__CLASS__": "Adzuna::API::Response::Category"
+      },
+      "description": "Texte d'annonce fictif n°8 : l’entreprise recherche un profil intelligence artificielle pour concevoir, expérimenter et mettre en production des solutions. Vos missions : analyser les besoins, développer des prototypes, évaluer des modèles et accompagner les équipes métiers dans leur adoption de l’IA…",
+      "id": "7100000008",
+      "created": "2026-11-04T17:29:51Z",
+      "contract_time": "full_time"
+    },
+    {
+      "title": "Ingénieur IA / AI Software Engineer F/H",
+      "redirect_url": "https://www.adzuna.fr/details/7100000009?utm_medium=api&utm_source=00000000",
+      "salary_min": 60000,
+      "salary_max": 90000,
+      "latitude": 45.72035,
+      "location": {
+        "display_name": "Lyon, Rhône",
+        "area": [
+          "France",
+          "Auvergne-Rhône-Alpes",
+          "Rhône",
+          "Lyon"
+        ],
+        "__CLASS__": "Adzuna::API::Response::Location"
+      },
+      "salary_is_predicted": "0",
+      "__CLASS__": "Adzuna::API::Response::Job",
+      "company": {
+        "display_name": "Société H",
+        "__CLASS__": "Adzuna::API::Response::Company"
+      },
+      "longitude": 5.08666,
+      "category": {
+        "tag": "other-general-jobs",
+        "label": "Emplois Autres/Général",
+        "__CLASS__": "Adzuna::API::Response::Category"
+      },
+      "description": "Texte d'annonce fictif n°9 : l’entreprise recherche un profil intelligence artificielle pour concevoir, expérimenter et mettre en production des solutions. Vos missions : analyser les besoins, développer des prototypes, évaluer des modèles et accompagner les équipes métiers dans leur adoption de l’IA…",
+      "id": "7100000009",
+      "created": "2026-11-01T19:03:47Z",
+      "contract_time": "full_time"
+    },
+    {
+      "title": "Ingénieur IA & Développement (Java / Angular) H/F – Lyon",
+      "redirect_url": "https://www.adzuna.fr/details/7100000010?utm_medium=api&utm_source=00000000",
+      "latitude": 45.76471,
+      "location": {
+        "display_name": "Villeurbanne, Lyon",
+        "area": [
+          "France",
+          "Auvergne-Rhône-Alpes",
+          "Rhône",
+          "Lyon",
+          "Villeurbanne"
+        ],
+        "__CLASS__": "Adzuna::API::Response::Location"
+      },
+      "salary_is_predicted": "0",
+      "__CLASS__": "Adzuna::API::Response::Job",
+      "company": {
+        "display_name": "Société I",
+        "__CLASS__": "Adzuna::API::Response::Company"
+      },
+      "longitude": 4.88039,
+      "category": {
+        "tag": "unknown",
+        "label": "Unknown",
+        "__CLASS__": "Adzuna::API::Response::Category"
+      },
+      "description": "Texte d'annonce fictif n°10 : l’entreprise recherche un profil intelligence artificielle pour concevoir, expérimenter et mettre en production des solutions. Vos missions : analyser les besoins, développer des prototypes, évaluer des modèles et accompagner les équipes métiers dans leur adoption de l’IA…",
+      "id": "7100000010",
+      "created": "2026-09-30T01:46:32Z"
     }
-  ]
+  ],
+  "__CLASS__": "Adzuna::API::Response::JobSearchResults",
+  "count": 36,
+  "mean": 63666.67
 }

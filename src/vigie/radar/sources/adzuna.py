@@ -1,10 +1,9 @@
 """Source Adzuna (API de recherche d'offres, marché français).
 
-La forme des réponses (``results``, ``id``, ``title``, ``description``, ``created``,
-``redirect_url``, ``company.display_name``, ``location``, ``salary_min/max``,
-``salary_is_predicted``, ``contract_type``) est confirmée par l'exemple de la documentation
-officielle. Les valeurs propres au marché français et les paramètres de localisation n'ont
-pas été vérifiés sur une réponse réelle : voir ``docs/decisions.md``.
+La forme des réponses a été vérifiée sur la documentation officielle et sur une vraie réponse
+(recherche ``what`` + ``where=Lyon``). Restent non vérifiés : ``where`` avec un nom de
+département, ``distance``, ``max_days_old`` et les valeurs de ``contract_type`` autres que
+``permanent`` : voir ``docs/decisions.md``.
 """
 
 import logging
@@ -110,7 +109,12 @@ class AdzunaSource:
             response = self._client.request(
                 "GET",
                 SEARCH_URL.format(page=page),
-                params={**self._auth(), **params, "results_per_page": str(PER_PAGE)},
+                params={
+                    **self._auth(),
+                    **params,
+                    "results_per_page": str(PER_PAGE),
+                    "content-type": "application/json",
+                },
                 # Sans en-tête Accept, l'API répond en JSONP par défaut.
                 headers={"Accept": "application/json"},
             )
