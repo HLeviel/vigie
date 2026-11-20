@@ -130,19 +130,20 @@ class AdzunaSource:
         logger.warning("Limite de %d pages atteinte : résultats tronqués.", MAX_PAGES)
 
     @staticmethod
-    def _zones(query: SearchQuery) -> list[dict[str, str]]:
+    def _zones(query: SearchQuery) -> list[tuple[dict[str, str], str | None]]:
+        """Paramètres de zone et, pour un département, son code (filtre côté client)."""
         if query.commune and query.distance_km:
-            return [{"where": query.commune, "distance": str(query.distance_km)}]
+            return [({"where": query.commune, "distance": str(query.distance_km)}, None)]
         if query.departments:
-            zones = []
+            zones: list[tuple[dict[str, str], str | None]] = []
             for code in query.departments:
                 name = department_name(code)
                 if name is None:
                     # Message sans le code : les critères ne doivent pas apparaître dans les logs.
                     raise ValueError("département inconnu dans une recherche")
-                zones.append({"where": name})
+                zones.append(({"where": name}, code.upper()))
             return zones
-        return [{}]
+        return [({}, None)]
 
     def fetch(self, query: SearchQuery, since: datetime) -> Iterator[Offer]:
         now = self._now()
@@ -150,16 +151,23 @@ class AdzunaSource:
         max_days_old = max(1, math.ceil((now - low) / timedelta(days=1)))
         seen: set[str] = set()
         for keyword in query.keywords:
-            for zone in self._zones(query):
+            for zone, code in self._zones(query):
                 params = {"what": keyword, "max_days_old": str(max_days_old), **zone}
                 for raw in self._pages(params):
                     raw_id = str(raw.get("id", ""))
                     if not raw_id or raw_id in seen:
                         continue
-                    seen.add(raw_id)
                     try:
-                        yield offer_from_raw(raw, now)
+                        offer = offer_from_raw(raw, now)
                     except (KeyError, ValueError, ValidationError):
+                        seen.add(raw_id)
                         self.skipped += 1
+                        continue
+                    # `where` est une recherche plein texte : « Loire » ramène aussi la
+                    # Haute-Loire. On écarte les offres dont le département connu diffère.
+                    if code and offer.department and offer.department != code:
+                        continue
+                    seen.add(raw_id)
+                    yield offer
         if self.skipped:
             logger.warning("%d offre(s) Adzuna ignorée(s) (format inattendu).", self.skipped)

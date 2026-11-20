@@ -327,3 +327,40 @@ def test_fixtures_contain_no_secret_or_personal_data(path: Path) -> None:
     assert "@" not in text
     assert "adref" not in text
     assert "eyJ" not in text  # jetons JWT
+
+
+@respx.mock
+def test_department_search_drops_offers_from_other_departments() -> None:
+    """`where` est du plein texte : « Loire » ramène aussi la Haute-Loire."""
+    base = fixture_body()["results"][0]
+
+    def offer(oid: str, dept_name: str) -> dict[str, Any]:
+        return {
+            **base,
+            "id": oid,
+            "location": {"display_name": dept_name, "area": ["France", "Région", dept_name]},
+        }
+
+    results = [
+        offer("a", "Loire"),
+        offer("b", "Haute-Loire"),
+        offer("c", "Loire-Atlantique"),
+        {**base, "id": "d", "location": {"display_name": "France", "area": ["France"]}},
+    ]
+    respx.get(URL).mock(return_value=httpx.Response(200, json={"results": results}))
+    offers = list(make_source().fetch(query(departments=["42"]), SINCE))
+    # département 42 conservé ; offre sans département connu conservée (filtres ensuite)
+    assert [o.source_id for o in offers] == ["a", "d"]
+
+
+@respx.mock
+def test_off_zone_offer_can_match_another_requested_department() -> None:
+    base = fixture_body()["results"][0]
+    haute_loire = {
+        **base,
+        "id": "x",
+        "location": {"display_name": "Haute-Loire", "area": ["France", "R", "Haute-Loire"]},
+    }
+    respx.get(URL).mock(return_value=httpx.Response(200, json={"results": [haute_loire]}))
+    offers = list(make_source().fetch(query(departments=["42", "43"]), SINCE))
+    assert [o.department for o in offers] == ["43"]
