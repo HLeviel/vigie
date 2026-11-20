@@ -8,6 +8,7 @@ from typing import Any, Self
 from pydantic import (
     AwareDatetime,
     BaseModel,
+    ConfigDict,
     Field,
     HttpUrl,
     computed_field,
@@ -105,7 +106,7 @@ class Offer(BaseModel):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def dedup_key(self) -> str:
-        return compute_dedup_key(self.company, self.title, self.department)
+        return compute_dedup_key(self.company, self.title, self.department, self.location_label)
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -116,6 +117,8 @@ class Offer(BaseModel):
 
 class SearchQuery(BaseModel):
     """Une recherche : mots-clés, zone, types de contrat, ancienneté maximale."""
+
+    model_config = ConfigDict(extra="forbid")
 
     name: str = Field(min_length=1)
     keywords: list[str] = Field(min_length=1)

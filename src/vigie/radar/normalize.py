@@ -72,10 +72,34 @@ def normalize_for_key(text: str) -> str:
     return normalize_spaces(text)
 
 
-def compute_dedup_key(company: str | None, title: str, department: str | None) -> str:
-    """SHA-256 de ``norm(company)|norm(title)|department`` (section 9 de la spec)."""
-    raw = "|".join([normalize_for_key(company or ""), normalize_for_key(title), department or ""])
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+def extract_city(location_label: str | None) -> str | None:
+    """Ville normalisée d'un libellé de lieu (« 69 - LYON 03 », « Lyon, Rhône », « Lyon (69) »)."""
+    if not location_label:
+        return None
+    text = re.sub(r"^\s*(?:\d{2,3}|2[ABab])\s*-\s*", "", location_label)  # préfixe département
+    text = re.sub(r"\([^)]*\)", " ", text)  # parenthèses
+    text = text.split(",")[0]
+    text = re.sub(r"\b\d{1,2}(?:e|er|eme)?\s*$", " ", text.strip(), flags=re.IGNORECASE)
+    city = normalize_for_key(text)
+    return city or None
+
+
+def compute_dedup_key(
+    company: str | None,
+    title: str,
+    department: str | None,
+    location_label: str | None = None,
+) -> str:
+    """SHA-256 de ``norm(company)|norm(title)|zone`` (section 9 de la spec).
+
+    La zone est le département ; à défaut la ville normalisée du lieu ; à défaut elle est
+    omise (seuls l'entreprise et le titre comptent).
+    """
+    parts = [normalize_for_key(company or ""), normalize_for_key(title)]
+    zone = department or extract_city(location_label)
+    if zone:
+        parts.append(zone)
+    return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
 
 
 # --- Contrat -------------------------------------------------------------------------------

@@ -1,0 +1,35 @@
+# Configuration FICTIVE, commitée. Copier vers config/radar.yaml (ignoré par git) ou fournir le
+# contenu réel via le secret VIGIE_RADAR_CONFIG. Ne jamais committer de critères ni d'entreprises réels.
+
+sources:
+  adzuna: { enabled: true }
+  ats: { enabled: true }              # pas encore implémentée : ignorée avec un avertissement
+  email_alerts: { enabled: true }     # pas encore implémentée : ignorée avec un avertissement
+  france_travail: { enabled: false }  # en attente d'accès
+
+ats_companies:                         # entreprises FICTIVES
+  - { name: "Exemple IA", platform: greenhouse, token: "exempleia" }
+  - { name: "Startup Data", platform: lever, token: "startupdata" }
+
+email_alerts:
+  allowed_senders:                     # à vérifier sur de vrais emails
+    france_travail: ["@francetravail.fr"]
+    apec: ["@apec.fr"]
+    wttj: ["@welcometothejungle.com"]
+    linkedin: ["@linkedin.com"]
+
+searches:
+  - name: data-ai-lyon
+    keywords: ["data engineer", "machine learning", "IA"]
+    departments: ["69"]
+    contract_types: [CDI, FREELANCE]
+    max_age_days: 7
+
+filters:
+  exclude_title: ["stage", "alternance", "commercial"]
+  exclude_companies: []
+  require_any: ["python", "data", "ia", "machine learning"]   # sur titre + description
+
+digest:
+  max_items: 50
+  format: html          # html ou markdown
