@@ -46,16 +46,16 @@ La collecte, le dédoublonnage et les filtres appartiennent à `radar`. Les troi
 
 | Module | Rôle | Statut |
 |---|---|---|
-| `radar` | Veille quotidienne des offres, sans LLM | En cours (collecte Adzuna et ATS, lecture des alertes email non vérifiée sur de vrais emails, stockage, dédoublonnage, filtres et CLI ; pas encore de digest ni de planification) |
+| `radar` | Veille quotidienne des offres, sans LLM | En cours (collecte Adzuna et ATS, lecture des alertes email non vérifiée sur de vrais emails, stockage, dédoublonnage, filtres, digest en fichier et CLI ; pas encore d'envoi par email ni de planification) |
 | `match` | Score offre/CV en 3 étages, évaluation precision@k | Prévu |
 | `cv` | CV et lettre adaptés, packagés en Agent Skill | Prévu |
 | `agent` | Agent LangChain, validation humaine avant action | Prévu |
 
-Aucun module n'est encore fonctionnel : `radar` n'a pour l'instant que son squelette, ses modèles de données, ses fonctions de normalisation et une source Adzuna vérifiée sur appels réels, des sources ATS (Greenhouse, Lever, Ashby, SmartRecruiters, Recruitee) vérifiées sur les API publiques, la lecture IMAP des alertes email (parseurs non vérifiés faute d'exemples réels), une source France Travail non vérifiée (API suspendue), le stockage SQLite, le dédoublonnage, les filtres et la CLI (`run`, `check`, `stats`). Ce tableau sera mis à jour à chaque avancée réelle.
+Aucun module n'est encore fonctionnel : `radar` n'a pour l'instant que son squelette, ses modèles de données, ses fonctions de normalisation et une source Adzuna vérifiée sur appels réels, des sources ATS (Greenhouse, Lever, Ashby, SmartRecruiters, Recruitee) vérifiées sur les API publiques, la lecture IMAP des alertes email (parseurs non vérifiés faute d'exemples réels), une source France Travail non vérifiée (API suspendue), le stockage SQLite, le dédoublonnage, les filtres, le digest en fichier HTML ou Markdown et la CLI (`run`, `check`, `stats`, `digest`). Ce tableau sera mis à jour à chaque avancée réelle.
 
 ## Démarrage rapide
 
-> **En cours.** Seul `radar` est partiellement utilisable (collecte Adzuna, stockage, filtres). Le digest, `match`, `cv` et `agent` n'existent pas encore.
+> **En cours.** Seul `radar` est partiellement utilisable (collecte Adzuna, stockage, filtres). L'envoi par email, `match`, `cv` et `agent` n'existent pas encore.
 
 ```bash
 git clone https://github.com/HLeviel/vigie.git
@@ -83,9 +83,10 @@ Lancement de `radar` (voir `config/radar.example.yaml` pour la configuration) :
 uv run vigie radar check --config config/radar.yaml
 uv run vigie radar run --config config/radar.yaml --dry-run
 uv run vigie radar stats
+uv run vigie radar digest --config config/radar.yaml   # écrit digest.html (ou .md), jamais sur la console
 ```
 
-`check` ne fait aucun appel réseau. `run --dry-run` collecte sans rien écrire. Le digest et la planification ne sont pas encore disponibles.
+`check` ne fait aucun appel réseau. `run --dry-run` collecte sans rien écrire. `digest` écrit les nouveautés dans un fichier privé (mode 0600, ignoré par git). L'envoi par email et la planification ne sont pas encore disponibles.
 
 ## Choix techniques
 

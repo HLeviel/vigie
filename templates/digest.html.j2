@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ digest.title }}</title>
+</head>
+<body style="margin:0;padding:16px;background:#ffffff;color:#1b1f24;font-family:Helvetica,Arial,sans-serif;font-size:15px;line-height:1.45;">
+<div style="max-width:680px;margin:0 auto;">
+<h1 style="font-size:20px;margin:0 0 4px 0;">{{ digest.title }}</h1>
+<p style="margin:0 0 16px 0;color:#57606a;font-size:13px;">{{ digest.subtitle }}</p>
+
+{% if digest.items %}
+<ol style="padding-left:20px;margin:0 0 24px 0;">
+{% for item in digest.items %}
+  <li style="margin:0 0 14px 0;">
+    <a href="{{ item.url }}" rel="noopener noreferrer" style="color:#0b5cad;font-weight:bold;text-decoration:none;">{{ item.title }}</a>
+    <div style="color:#57606a;font-size:13px;">{{ item.meta }}</div>
+    {% if item.suspicious %}
+    <div style="color:#9a3412;font-size:12px;">Contenu suspect (instructions ou caractères invisibles) : lire avec prudence.</div>
+    {% endif %}
+  </li>
+{% endfor %}
+</ol>
+{% else %}
+<p style="margin:0 0 24px 0;">Aucune nouvelle offre.</p>
+{% endif %}
+
+<h2 style="font-size:14px;margin:0 0 6px 0;color:#57606a;">Dernière exécution</h2>
+{% if digest.run %}
+<p style="margin:0 0 6px 0;color:#57606a;font-size:13px;">{{ digest.run_label }}</p>
+<ul style="padding-left:18px;margin:0;color:#57606a;font-size:13px;">
+{% for line in digest.run_lines %}
+  <li{% if line.failed %} style="color:#b42318;"{% endif %}>{{ line.text }}</li>
+{% endfor %}
+</ul>
+{% else %}
+<p style="margin:0;color:#57606a;font-size:13px;">Aucune exécution enregistrée.</p>
+{% endif %}
+</div>
+</body>
+</html>
