@@ -1,0 +1,60 @@
+{
+  "resultats": [
+    {
+      "id": "190AAAA",
+      "intitule": "Data Engineer (H/F)",
+      "description": "Au sein de l'equipe data, vous concevez des pipelines Python.\nPoste en 2 jours de teletravail par semaine.",
+      "dateCreation": "2026-11-18T09:30:00.000Z",
+      "dateActualisation": "2026-11-19T07:00:00.000Z",
+      "lieuTravail": {"libelle": "69 - LYON 03", "latitude": 45.76, "longitude": 4.85, "codePostal": "69003", "commune": "69383"},
+      "romeCode": "M1805",
+      "appellationlibelle": "Ingenieur / Ingenieure data",
+      "entreprise": {"nom": "Exemple SA", "entrepriseAdaptee": false},
+      "typeContrat": "CDI",
+      "typeContratLibelle": "Contrat a duree indeterminee",
+      "natureContrat": "Contrat travail",
+      "experienceLibelle": "3 ans",
+      "salaire": {"libelle": "Annuel de 45000.0 Euros a 55000.0 Euros sur 12.0 mois"},
+      "dureeTravailLibelle": "35H Horaires normaux",
+      "alternance": false,
+      "nombrePostes": 1,
+      "origineOffre": {"origine": "1", "urlOrigine": "https://candidat.francetravail.fr/offres/recherche/detail/190AAAA"},
+      "contact": {"nom": "Contact Fictif", "courriel": "contact@example.org"}
+    },
+    {
+      "id": "190BBBB",
+      "intitule": "Developpeur Python",
+      "description": "<p>Mission de 6 mois.</p><p>Pas de teletravail.</p>",
+      "dateCreation": "2026-11-19T14:05:00.000Z",
+      "lieuTravail": {"libelle": "75 - PARIS 08", "codePostal": "75008"},
+      "entreprise": {"nom": "Autre SAS"},
+      "typeContrat": "CDD",
+      "salaire": {"libelle": "Mensuel de 3000.0 Euros sur 13.0 mois"},
+      "alternance": false,
+      "origineOffre": {"origine": "2", "urlOrigine": "https://partenaire.example.org/offre/42"}
+    },
+    {
+      "id": "190CCCC",
+      "intitule": "Technicien data",
+      "description": "Mission d'interim.",
+      "dateCreation": "2026-11-19T16:00:00.000Z",
+      "lieuTravail": {"libelle": "33 - BORDEAUX", "codePostal": "33000"},
+      "typeContrat": "MIS",
+      "alternance": false,
+      "origineOffre": {"origine": "1"}
+    },
+    {
+      "id": "190DDDD",
+      "intitule": "Alternance Data Analyst",
+      "description": "Contrat d'apprentissage.",
+      "dateCreation": "2026-11-17T08:00:00.000Z",
+      "lieuTravail": {"libelle": "69 - LYON"},
+      "entreprise": {"nom": "Ecole Fictive"},
+      "typeContrat": "CDD",
+      "natureContrat": "Contrat apprentissage",
+      "alternance": true,
+      "salaire": {"libelle": "Horaire de 12.0 Euros"},
+      "origineOffre": {"origine": "1", "urlOrigine": "https://candidat.francetravail.fr/offres/recherche/detail/190DDDD"}
+    }
+  ]
+}

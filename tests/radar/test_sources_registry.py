@@ -25,3 +25,7 @@ def test_registry_build(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_unknown_source() -> None:
     with pytest.raises(sources.UnknownSourceError):
         sources.build("nope", Settings(_env_file=None))  # type: ignore[call-arg]
+
+
+def test_france_travail_is_registered() -> None:
+    assert "france_travail" in sources.available()
