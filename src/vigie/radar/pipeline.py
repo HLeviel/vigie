@@ -123,7 +123,7 @@ def run_pipeline(
         report = SourceReport(source=name)
         began = monotonic()
         try:
-            source: Source = registry[name](settings)
+            source: Source = registry[name](settings, config)
             _collect(source, config, store, filters, report, since, now)
             report.errors += int(getattr(source, "skipped", 0))
         except Exception as exc:

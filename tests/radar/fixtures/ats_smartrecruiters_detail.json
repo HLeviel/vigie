@@ -1,0 +1,28 @@
+{
+  "id": "744000100000001",
+  "name": "Ingénieur Data H/F",
+  "postingUrl": "https://jobs.smartrecruiters.com/exemplesr/744000100000001-ingenieur-data-h-f",
+  "applyUrl": "https://jobs.smartrecruiters.com/exemplesr/744000100000001-ingenieur-data-h-f?oga=true",
+  "active": true,
+  "visibility": "PUBLIC",
+  "jobAd": {
+    "sections": {
+      "companyDescription": {
+        "title": "Description de l'entreprise",
+        "text": "<p>Une entreprise d'exemple.</p>"
+      },
+      "jobDescription": {
+        "title": "Description du poste",
+        "text": "<p>Vous développez des pipelines <strong>Python</strong>.</p>"
+      },
+      "qualifications": {
+        "title": "Qualifications",
+        "text": "<ul><li>Bac +5</li><li>SQL</li></ul>"
+      },
+      "additionalInformation": {
+        "title": "Informations supplémentaires",
+        "text": "<p>Télétravail partiel.</p>"
+      }
+    }
+  }
+}

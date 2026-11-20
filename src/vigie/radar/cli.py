@@ -20,6 +20,7 @@ from vigie.radar.pipeline import (
     plan_sources,
     run_pipeline,
 )
+from vigie.radar.sources.ats import SUPPORTED_PLATFORMS
 from vigie.radar.store import DEFAULT_DB_PATH, Store, StoreError
 from vigie.settings import Settings
 
@@ -55,6 +56,24 @@ def _db_path(db: Path | None, settings: Settings) -> Path:
     return db or settings.vigie_db_path or DEFAULT_DB_PATH
 
 
+def _describe_ats(cfg: RadarConfig) -> None:
+    """Compteurs seulement : les entreprises ciblées sont confidentielles."""
+    if not cfg.sources.ats.enabled:
+        return
+    if not cfg.ats_companies:
+        typer.echo("source ats : aucune entreprise dans ats_companies")
+        return
+    unsupported = sorted(
+        {c.platform for c in cfg.ats_companies if c.platform not in SUPPORTED_PLATFORMS}
+    )
+    count = sum(c.platform in unsupported for c in cfg.ats_companies)
+    if unsupported:
+        typer.echo(
+            f"source ats : {count} entreprise(s) sur une plateforme non prise en charge "
+            f"({', '.join(unsupported)}), ignorée(s)"
+        )
+
+
 def _describe_plan(plan: SourcePlan) -> None:
     for name in plan.active:
         typer.echo(f"source {name} : active")
@@ -75,6 +94,7 @@ def check(config: ConfigOption = None) -> None:
     except UnknownSourceSelectionError as exc:  # pragma: no cover (sans --source)
         raise _fail(str(exc)) from None
     _describe_plan(plan)
+    _describe_ats(cfg)
     if plan.missing_variables:
         raise _fail("variables d'environnement manquantes : " + ", ".join(plan.missing_variables))
     typer.echo("secrets : présents")

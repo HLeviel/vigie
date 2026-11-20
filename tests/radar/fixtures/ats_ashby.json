@@ -1,0 +1,166 @@
+{
+  "jobs": [
+    {
+      "id": "b0000000-0000-0000-0000-000000000001",
+      "title": "Data Engineer",
+      "department": "Engineering",
+      "team": "Data",
+      "employmentType": "FullTime",
+      "location": "Paris, France",
+      "secondaryLocations": [],
+      "publishedAt": "2026-11-05T10:00:00.000+00:00",
+      "isListed": true,
+      "isRemote": false,
+      "workplaceType": "Hybrid",
+      "address": {
+        "postalAddress": {
+          "postalCode": "",
+          "addressRegion": "",
+          "addressCountry": "",
+          "addressLocality": ""
+        }
+      },
+      "jobUrl": "https://jobs.ashbyhq.com/exemple-ashby/b0000000-0000-0000-0000-000000000001",
+      "applyUrl": "https://jobs.ashbyhq.com/exemple-ashby/b0000000-0000-0000-0000-000000000001/application",
+      "descriptionHtml": "<p>Description de Data Engineer.</p>",
+      "descriptionPlain": "Description de Data Engineer."
+    },
+    {
+      "id": "b0000000-0000-0000-0000-000000000002",
+      "title": "Platform Engineer",
+      "department": "Engineering",
+      "team": "Data",
+      "employmentType": "FullTime",
+      "location": "Remote - European Union",
+      "secondaryLocations": [],
+      "publishedAt": "2026-11-05T10:00:00.000+00:00",
+      "isListed": true,
+      "isRemote": true,
+      "workplaceType": "Remote",
+      "address": {
+        "postalAddress": {
+          "postalCode": "",
+          "addressRegion": "",
+          "addressCountry": "",
+          "addressLocality": ""
+        }
+      },
+      "jobUrl": "https://jobs.ashbyhq.com/exemple-ashby/b0000000-0000-0000-0000-000000000002",
+      "applyUrl": "https://jobs.ashbyhq.com/exemple-ashby/b0000000-0000-0000-0000-000000000002/application",
+      "descriptionHtml": "<p>Description de Platform Engineer.</p>",
+      "descriptionPlain": "Description de Platform Engineer."
+    },
+    {
+      "id": "b0000000-0000-0000-0000-000000000003",
+      "title": "Sales Manager",
+      "department": "Engineering",
+      "team": "Data",
+      "employmentType": "FullTime",
+      "location": "Remote - US",
+      "secondaryLocations": [],
+      "publishedAt": "2026-11-05T10:00:00.000+00:00",
+      "isListed": true,
+      "isRemote": true,
+      "workplaceType": "Remote",
+      "address": {
+        "postalAddress": {
+          "postalCode": "",
+          "addressRegion": "",
+          "addressCountry": "",
+          "addressLocality": ""
+        }
+      },
+      "jobUrl": "https://jobs.ashbyhq.com/exemple-ashby/b0000000-0000-0000-0000-000000000003",
+      "applyUrl": "https://jobs.ashbyhq.com/exemple-ashby/b0000000-0000-0000-0000-000000000003/application",
+      "descriptionHtml": "<p>Description de Sales Manager.</p>",
+      "descriptionPlain": "Description de Sales Manager."
+    },
+    {
+      "id": "b0000000-0000-0000-0000-000000000004",
+      "title": "Designer",
+      "department": "Engineering",
+      "team": "Data",
+      "employmentType": "FullTime",
+      "location": "Paris",
+      "secondaryLocations": [],
+      "publishedAt": "2026-11-05T10:00:00.000+00:00",
+      "isListed": false,
+      "isRemote": false,
+      "workplaceType": "OnSite",
+      "address": {
+        "postalAddress": {
+          "postalCode": "",
+          "addressRegion": "",
+          "addressCountry": "",
+          "addressLocality": ""
+        }
+      },
+      "jobUrl": "https://jobs.ashbyhq.com/exemple-ashby/b0000000-0000-0000-0000-000000000004",
+      "applyUrl": "https://jobs.ashbyhq.com/exemple-ashby/b0000000-0000-0000-0000-000000000004/application",
+      "descriptionHtml": "<p>Description de Designer.</p>",
+      "descriptionPlain": "Description de Designer."
+    },
+    {
+      "id": "b0000000-0000-0000-0000-000000000005",
+      "title": "Stage Data",
+      "department": "Engineering",
+      "team": "Data",
+      "employmentType": "Intern",
+      "location": "Lyon",
+      "secondaryLocations": [],
+      "publishedAt": "2026-11-05T10:00:00.000+00:00",
+      "isListed": true,
+      "isRemote": false,
+      "workplaceType": "OnSite",
+      "address": {
+        "postalAddress": {
+          "postalCode": "",
+          "addressRegion": "",
+          "addressCountry": "",
+          "addressLocality": ""
+        }
+      },
+      "jobUrl": "https://jobs.ashbyhq.com/exemple-ashby/b0000000-0000-0000-0000-000000000005",
+      "applyUrl": "https://jobs.ashbyhq.com/exemple-ashby/b0000000-0000-0000-0000-000000000005/application",
+      "descriptionHtml": "<p>Description de Stage Data.</p>",
+      "descriptionPlain": "Description de Stage Data."
+    },
+    {
+      "id": "b0000000-0000-0000-0000-000000000006",
+      "title": "Analyste",
+      "department": "Engineering",
+      "team": "Data",
+      "employmentType": "FullTime",
+      "location": "Berlin",
+      "secondaryLocations": [
+        {
+          "location": "Marseille, France",
+          "address": {
+            "postalAddress": {
+              "addressRegion": "",
+              "addressCountry": "France",
+              "addressLocality": "Marseille"
+            }
+          }
+        }
+      ],
+      "publishedAt": "2026-11-05T10:00:00.000+00:00",
+      "isListed": true,
+      "isRemote": false,
+      "workplaceType": "OnSite",
+      "address": {
+        "postalAddress": {
+          "postalCode": "",
+          "addressRegion": "",
+          "addressCountry": "",
+          "addressLocality": ""
+        }
+      },
+      "jobUrl": "https://jobs.ashbyhq.com/exemple-ashby/b0000000-0000-0000-0000-000000000006",
+      "applyUrl": "https://jobs.ashbyhq.com/exemple-ashby/b0000000-0000-0000-0000-000000000006/application",
+      "descriptionHtml": "<p>Description de Analyste.</p>",
+      "descriptionPlain": "Description de Analyste."
+    }
+  ],
+  "apiVersion": "1"
+}

@@ -17,7 +17,7 @@ from pydantic import ValidationError
 from vigie.radar.geo import department_code_from_name, department_name
 from vigie.radar.http import SourceHttpClient, SourceHttpError
 from vigie.radar.models import ContractType, Offer, SearchQuery
-from vigie.radar.normalize import html_to_text, parse_contract_type
+from vigie.radar.normalize import contract_from_title, html_to_text
 from vigie.settings import MissingSettingsError, Settings
 
 logger = logging.getLogger(__name__)
@@ -36,14 +36,9 @@ CONTRACT_CODES: dict[str, ContractType] = {
 
 def contract_from_raw(raw: dict[str, Any]) -> ContractType:
     """Un titre explicite (alternance, stage, intérim, freelance) l'emporte sur le code Adzuna."""
-    from_title = ContractType(parse_contract_type(str(raw.get("title") or "")))
-    if from_title in (
-        ContractType.ALTERNANCE,
-        ContractType.STAGE,
-        ContractType.INTERIM,
-        ContractType.FREELANCE,
-    ):
-        return from_title
+    from_title = contract_from_title(str(raw.get("title") or ""))
+    if from_title:
+        return ContractType(from_title)
     return CONTRACT_CODES.get(str(raw.get("contract_type") or "").lower(), ContractType.AUTRE)
 
 

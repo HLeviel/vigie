@@ -21,7 +21,7 @@ runner = CliRunner()
 CONFIG = """
 sources:
   adzuna: { enabled: true }
-  ats: { enabled: true }
+  email_alerts: { enabled: true }
   france_travail: { enabled: true }
 searches:
   - { name: confidentiel, keywords: [python-secret], departments: ['69'] }
@@ -63,7 +63,7 @@ def test_check_ok_and_statuses(env: dict[str, Path]) -> None:
     assert result.exit_code == 0, result.output
     assert "configuration valide : 1 recherche" in result.output
     assert "source adzuna : active" in result.output
-    assert "source ats : pas encore implémentée" in result.output
+    assert "source email_alerts : pas encore implémentée" in result.output
     assert "source france_travail : en attente d'accès" in result.output
     assert "secrets : présents" in result.output
 
@@ -176,7 +176,9 @@ def test_dry_run_does_not_modify_an_existing_database(
 def test_exit_code_3_when_a_source_fails(
     env: dict[str, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    env["config"].write_text(CONFIG.replace("ats: { enabled: true }", "ats: { enabled: false }"))
+    env["config"].write_text(
+        CONFIG.replace("email_alerts: { enabled: true }", "email_alerts: { enabled: false }")
+    )
     monkeypatch.setattr(
         cli, "_settings", lambda: make_settings(ft_client_id="i", ft_client_secret="s")
     )
@@ -270,3 +272,25 @@ def test_db_path_resolution(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
     assert cli._db_path(None, configured) == tmp_path / "x.db"
     assert cli._db_path(tmp_path / "y.db", configured) == tmp_path / "y.db"
     assert cli._db_path(None, make_settings()).name == "radar.db"
+
+
+def test_check_reports_unsupported_ats_platform_by_count(env: dict[str, Path]) -> None:
+    env["config"].write_text(
+        CONFIG.replace("sources:\n", "sources:\n  ats: { enabled: true }\n", 1)
+        + "ats_companies:\n"
+        + "  - { name: Entreprise-Confidentielle, platform: workable, token: tok-confidentiel }\n"
+        + "  - { name: Autre, platform: lever, token: autre }\n"
+    )
+    result = runner.invoke(cli.root, ["radar", "check", *args(env)])
+    assert result.exit_code == 0, result.output
+    assert "1 entreprise(s) sur une plateforme non prise en charge (workable)" in result.output
+    assert "Confidentielle" not in result.output
+    assert "confidentiel" not in result.output
+
+
+def test_check_ats_without_companies(env: dict[str, Path]) -> None:
+    env["config"].write_text(
+        CONFIG.replace("sources:\n", "sources:\n  ats: { enabled: true }\n", 1)
+    )
+    result = runner.invoke(cli.root, ["radar", "check", *args(env)])
+    assert "aucune entreprise dans ats_companies" in result.output

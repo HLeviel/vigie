@@ -1,0 +1,157 @@
+[
+  {
+    "additionalPlain": "Merci de postuler.",
+    "additional": "<div>Merci de postuler.</div>",
+    "categories": {
+      "commitment": "Full-time",
+      "location": "Lyon, France",
+      "team": "Engineering",
+      "allLocations": [
+        "Lyon, France"
+      ]
+    },
+    "createdAt": 1794477600000,
+    "descriptionPlain": "Nous construisons des produits d'IA.",
+    "description": "<div>Nous construisons des produits d'IA.</div>",
+    "id": "a0000000-0000-0000-0000-000000000001",
+    "lists": [
+      {
+        "text": "Vos missions",
+        "content": "\n<li>Concevoir des modèles</li><li>Mettre en production</li>"
+      }
+    ],
+    "text": "Ingénieur IA",
+    "country": "FR",
+    "workplaceType": "hybrid",
+    "opening": "",
+    "openingPlain": "",
+    "descriptionBody": "",
+    "descriptionBodyPlain": "",
+    "hostedUrl": "https://jobs.lever.co/startupdata/a0000000-0000-0000-0000-000000000001",
+    "applyUrl": "https://jobs.lever.co/startupdata/a0000000-0000-0000-0000-000000000001/apply"
+  },
+  {
+    "additionalPlain": "Merci de postuler.",
+    "additional": "<div>Merci de postuler.</div>",
+    "categories": {
+      "commitment": "Full-time",
+      "location": "New York, NY",
+      "team": "Engineering",
+      "allLocations": [
+        "New York, NY"
+      ]
+    },
+    "createdAt": 1794477600000,
+    "descriptionPlain": "Nous construisons des produits d'IA.",
+    "description": "<div>Nous construisons des produits d'IA.</div>",
+    "id": "a0000000-0000-0000-0000-000000000002",
+    "lists": [
+      {
+        "text": "Vos missions",
+        "content": "\n<li>Concevoir des modèles</li><li>Mettre en production</li>"
+      }
+    ],
+    "text": "Software Engineer",
+    "country": "US",
+    "workplaceType": "onsite",
+    "opening": "",
+    "openingPlain": "",
+    "descriptionBody": "",
+    "descriptionBodyPlain": "",
+    "hostedUrl": "https://jobs.lever.co/startupdata/a0000000-0000-0000-0000-000000000002",
+    "applyUrl": "https://jobs.lever.co/startupdata/a0000000-0000-0000-0000-000000000002/apply"
+  },
+  {
+    "additionalPlain": "Merci de postuler.",
+    "additional": "<div>Merci de postuler.</div>",
+    "categories": {
+      "commitment": "Internship",
+      "location": "Paris, France",
+      "team": "Engineering",
+      "allLocations": [
+        "Paris, France"
+      ]
+    },
+    "createdAt": 1794477600000,
+    "descriptionPlain": "Nous construisons des produits d'IA.",
+    "description": "<div>Nous construisons des produits d'IA.</div>",
+    "id": "a0000000-0000-0000-0000-000000000003",
+    "lists": [
+      {
+        "text": "Vos missions",
+        "content": "\n<li>Concevoir des modèles</li><li>Mettre en production</li>"
+      }
+    ],
+    "text": "Data Intern",
+    "country": "FR",
+    "workplaceType": "onsite",
+    "opening": "",
+    "openingPlain": "",
+    "descriptionBody": "",
+    "descriptionBodyPlain": "",
+    "hostedUrl": "https://jobs.lever.co/startupdata/a0000000-0000-0000-0000-000000000003",
+    "applyUrl": "https://jobs.lever.co/startupdata/a0000000-0000-0000-0000-000000000003/apply"
+  },
+  {
+    "additionalPlain": "Merci de postuler.",
+    "additional": "<div>Merci de postuler.</div>",
+    "categories": {
+      "commitment": "Fixed-Term",
+      "location": "Remote - Europe",
+      "team": "Engineering",
+      "allLocations": [
+        "Remote - Europe"
+      ]
+    },
+    "createdAt": 1794477600000,
+    "descriptionPlain": "Nous construisons des produits d'IA.",
+    "description": "<div>Nous construisons des produits d'IA.</div>",
+    "id": "a0000000-0000-0000-0000-000000000004",
+    "lists": [
+      {
+        "text": "Vos missions",
+        "content": "\n<li>Concevoir des modèles</li><li>Mettre en production</li>"
+      }
+    ],
+    "text": "Data Engineer (Remote Europe)",
+    "country": "DE",
+    "workplaceType": "remote",
+    "opening": "",
+    "openingPlain": "",
+    "descriptionBody": "",
+    "descriptionBodyPlain": "",
+    "hostedUrl": "https://jobs.lever.co/startupdata/a0000000-0000-0000-0000-000000000004",
+    "applyUrl": "https://jobs.lever.co/startupdata/a0000000-0000-0000-0000-000000000004/apply"
+  },
+  {
+    "additionalPlain": "Merci de postuler.",
+    "additional": "<div>Merci de postuler.</div>",
+    "categories": {
+      "commitment": "Full-time",
+      "location": "Remote",
+      "team": "Engineering",
+      "allLocations": [
+        "Remote"
+      ]
+    },
+    "createdAt": 1794477600000,
+    "descriptionPlain": "Nous construisons des produits d'IA.",
+    "description": "<div>Nous construisons des produits d'IA.</div>",
+    "id": "a0000000-0000-0000-0000-000000000005",
+    "lists": [
+      {
+        "text": "Vos missions",
+        "content": "\n<li>Concevoir des modèles</li><li>Mettre en production</li>"
+      }
+    ],
+    "text": "Research Scientist",
+    "country": "US",
+    "workplaceType": "remote",
+    "opening": "",
+    "openingPlain": "",
+    "descriptionBody": "",
+    "descriptionBodyPlain": "",
+    "hostedUrl": "https://jobs.lever.co/startupdata/a0000000-0000-0000-0000-000000000005",
+    "applyUrl": "https://jobs.lever.co/startupdata/a0000000-0000-0000-0000-000000000005/apply"
+  }
+]
