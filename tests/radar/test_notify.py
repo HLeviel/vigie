@@ -210,3 +210,31 @@ def test_alert_digest_subject() -> None:
     store = Store.open(":memory:")
     digest = build_digest(store, DigestConfig(), NOW)
     assert build_message(digest, USER, [USER])["Subject"] == "Vigie : alerte, une source a échoué"
+
+
+def error_message(fail_at: str | None, smtp_port: int = 587) -> str:
+    FakeSmtp.fail_at = fail_at
+    with pytest.raises(NotifyError) as exc:
+        if fail_at == "connect":
+
+            def refuse(*args: Any, **kwargs: Any) -> Any:
+                raise OSError(f"connexion refusée vers {HOST}")
+
+            SmtpSender(smtp_settings(smtp_port=smtp_port), smtp_factory=refuse).send(make_digest())
+        else:
+            sender(smtp_settings(smtp_port=smtp_port)).send(make_digest())
+    text = str(exc.value)
+    for secret in (HOST, USER, PASSWORD, "535", "550"):
+        assert secret not in text
+    return text
+
+
+def test_the_failing_stage_is_named_without_any_server_text() -> None:
+    assert "connexion au serveur SMTP" in error_message("connect")
+    assert "négociation TLS" in error_message("starttls")
+    assert "authentification SMTP" in error_message("login")
+    assert "envoi du message" in error_message("send")
+
+
+def test_implicit_tls_port_has_no_starttls_stage() -> None:
+    assert "authentification SMTP" in error_message("login", smtp_port=465)
