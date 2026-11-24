@@ -29,6 +29,8 @@ EXIT_OK = 0
 EXIT_CONFIG = 1
 EXIT_ALL_FAILED = 2
 EXIT_SOME_FAILED = 3
+EXIT_DELIVERY = 4  # envoi du digest échoué (les offres restent à notifier)
+EXIT_STATE = 5  # état S3 inaccessible ou non synchronisé
 
 
 @dataclass

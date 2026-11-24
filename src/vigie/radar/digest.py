@@ -287,5 +287,23 @@ def render_markdown(digest: Digest) -> str:
     return "\n".join(lines) + "\n"
 
 
+def render_text(digest: Digest) -> str:
+    """Texte brut (partie ``text/plain`` d'un email) : rien n'y est interprété ni échappé."""
+    lines = [digest.title, digest.subtitle, ""]
+    if digest.items:
+        for number, item in enumerate(digest.items, start=1):
+            lines.append(f"{number}. {item.title}")
+            lines.append("   " + " · ".join(item.meta_parts()))
+            lines.append(f"   {item.url}")
+            if item.suspicious:
+                lines.append("   ⚠ Contenu suspect : lire avec prudence.")
+            lines.append("")
+    else:
+        lines += ["Aucune nouvelle offre.", ""]
+    lines += ["Dernière exécution", digest.run_label or "Aucune exécution enregistrée."]
+    lines += [f"- {line.text}" for line in digest.run_lines]
+    return "\n".join(lines) + "\n"
+
+
 def render(digest: Digest) -> str:
     return render_html(digest) if digest.format == "html" else render_markdown(digest)

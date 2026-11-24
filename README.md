@@ -46,16 +46,16 @@ La collecte, le dédoublonnage et les filtres appartiennent à `radar`. Les troi
 
 | Module | Rôle | Statut |
 |---|---|---|
-| `radar` | Veille quotidienne des offres, sans LLM | En cours (collecte Adzuna et ATS, lecture des alertes email non vérifiée sur de vrais emails, stockage, dédoublonnage, filtres, digest en fichier et CLI ; pas encore d'envoi par email ni de planification) |
+| `radar` | Veille quotidienne des offres, sans LLM | En cours (collecte Adzuna et ATS, lecture des alertes email non vérifiée sur de vrais emails, stockage, dédoublonnage, filtres, digest en fichier, envoi par email, état sur S3 et workflow planifié écrits mais jamais exécutés pour de vrai) |
 | `match` | Score offre/CV en 3 étages, évaluation precision@k | Prévu |
 | `cv` | CV et lettre adaptés, packagés en Agent Skill | Prévu |
 | `agent` | Agent LangChain, validation humaine avant action | Prévu |
 
-Aucun module n'est encore fonctionnel : `radar` n'a pour l'instant que son squelette, ses modèles de données, ses fonctions de normalisation et une source Adzuna vérifiée sur appels réels, des sources ATS (Greenhouse, Lever, Ashby, SmartRecruiters, Recruitee) vérifiées sur les API publiques, la lecture IMAP des alertes email (parseurs non vérifiés faute d'exemples réels), une source France Travail non vérifiée (API suspendue), le stockage SQLite, le dédoublonnage, les filtres, le digest en fichier HTML ou Markdown et la CLI (`run`, `check`, `stats`, `digest`). Ce tableau sera mis à jour à chaque avancée réelle.
+Aucun module n'est encore fonctionnel : `radar` n'a pour l'instant que son squelette, ses modèles de données, ses fonctions de normalisation et une source Adzuna vérifiée sur appels réels, des sources ATS (Greenhouse, Lever, Ashby, SmartRecruiters, Recruitee) vérifiées sur les API publiques, la lecture IMAP des alertes email (parseurs non vérifiés faute d'exemples réels), une source France Travail non vérifiée (API suspendue), le stockage SQLite, le dédoublonnage, les filtres, le digest en fichier HTML ou Markdown, son envoi par email, la synchronisation de l'état sur S3, un workflow GitHub Actions planifié (jamais exécuté pour de vrai : pas d'accès AWS ni SMTP pendant le développement) et la CLI (`run`, `check`, `stats`, `digest`). Ce tableau sera mis à jour à chaque avancée réelle.
 
 ## Démarrage rapide
 
-> **En cours.** Seul `radar` est partiellement utilisable (collecte Adzuna, stockage, filtres). L'envoi par email, `match`, `cv` et `agent` n'existent pas encore.
+> **En cours.** Seul `radar` est partiellement utilisable (collecte Adzuna, stockage, filtres). `match`, `cv` et `agent` n'existent pas encore.
 
 ```bash
 git clone https://github.com/HLeviel/vigie.git
@@ -86,7 +86,15 @@ uv run vigie radar stats
 uv run vigie radar digest --config config/radar.yaml   # écrit digest.html (ou .md), jamais sur la console
 ```
 
-`check` ne fait aucun appel réseau. `run --dry-run` collecte sans rien écrire. `digest` écrit les nouveautés dans un fichier privé (mode 0600, ignoré par git). L'envoi par email et la planification ne sont pas encore disponibles.
+`check` ne fait aucun appel réseau. `run --dry-run` collecte sans rien écrire. `digest` écrit les nouveautés dans un fichier privé (mode 0600, ignoré par git). `run` envoie aussi le digest par email si les variables SMTP sont définies (`--no-email` pour l'éviter), et synchronise l'état avec S3 si `VIGIE_STATE_BUCKET` l'est.
+
+## Exécution planifiée (GitHub Actions)
+
+Le workflow [`radar.yml`](.github/workflows/radar.yml) lance `vigie radar run` : collecte, envoi du digest par email et synchronisation de l'état avec un bucket S3 privé. Authentification AWS par OIDC (aucune clé stockée), secrets dans l'environnement GitHub `radar`. La mise en place est décrite dans [`docs/aws-setup.md`](docs/aws-setup.md).
+
+> **La planification est livrée commentée** : seul le lancement manuel (Actions > radar > Run workflow) est actif, pour que les forks n'exécutent pas le workflow par erreur. Décommenter le bloc `schedule` de `radar.yml` (05:17 UTC) une fois la mise en place validée.
+
+Codes de sortie de `run` : `0` succès, `1` erreur de configuration ou de secrets, `2` toutes les sources ont échoué, `3` au moins une source a échoué, `4` envoi du digest échoué, `5` état S3 inaccessible ou non synchronisé.
 
 ## Choix techniques
 
