@@ -51,7 +51,7 @@ La collecte, le dédoublonnage et les filtres appartiennent à `radar`. Les troi
 | `cv` | CV et lettre adaptés, packagés en Agent Skill | Prévu |
 | `agent` | Agent LangChain, validation humaine avant action | Prévu |
 
-Aucun module n'est encore fonctionnel : `radar` n'a pour l'instant que son squelette, ses modèles de données, ses fonctions de normalisation et une source Adzuna vérifiée sur appels réels, des sources ATS (Greenhouse, Lever, Ashby, SmartRecruiters, Recruitee) vérifiées sur les API publiques, la lecture IMAP des alertes email (parseur France Travail vérifié sur de vrais emails ; APEC, WTTJ et LinkedIn non vérifiés faute d'exemples), une source France Travail non vérifiée (API suspendue), le stockage SQLite, le dédoublonnage, les filtres, le digest en fichier HTML ou Markdown, son envoi par email, la synchronisation de l'état sur S3, un workflow GitHub Actions planifié (jamais exécuté pour de vrai : pas d'accès AWS ni SMTP pendant le développement) et la CLI (`run`, `check`, `stats`, `digest`). Ce tableau sera mis à jour à chaque avancée réelle.
+Aucun module n'est encore fonctionnel : `radar` n'a pour l'instant que son squelette, ses modèles de données, ses fonctions de normalisation et une source Adzuna vérifiée sur appels réels, des sources ATS (Greenhouse, Lever, Ashby, SmartRecruiters, Recruitee) vérifiées sur les API publiques, la lecture IMAP des alertes email (parseur France Travail vérifié sur de vrais emails ; APEC, WTTJ et LinkedIn non vérifiés faute d'exemples), une source France Travail non vérifiée (API suspendue), le stockage SQLite, le dédoublonnage, les filtres, le digest en fichier HTML ou Markdown, son envoi par email, la synchronisation de l'état sur S3, un modèle de dépôt privé d'exécution avec workflow planifié et publication de versions taguées (jamais exécutés pour de vrai : pas d'accès AWS ni SMTP pendant le développement) et la CLI (`run`, `check`, `stats`, `digest`). Ce tableau sera mis à jour à chaque avancée réelle.
 
 ## Démarrage rapide
 
@@ -73,7 +73,6 @@ Variables d'environnement (voir [`.env.example`](.env.example)) :
 | `IMAP_HOST`, `IMAP_USER`, `IMAP_PASSWORD`, `IMAP_FOLDER` | Lecture des alertes email, en lecture seule (mot de passe d'application) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `DIGEST_TO` | Envoi du digest (lot M2) |
 | `VIGIE_STATE_BUCKET` | Bucket S3 privé de l'état (lot M2) |
-| `VIGIE_RADAR_CONFIG` | Critères de recherche réels, hors dépôt (lot M2) |
 
 Les secrets sont lus uniquement par `src/vigie/settings.py`. Le squelette de ce chargement existe ; le reste de `radar` reste à écrire.
 
@@ -88,11 +87,13 @@ uv run vigie radar digest --config config/radar.yaml   # écrit digest.html (ou 
 
 `check` ne fait aucun appel réseau. `run --dry-run` collecte sans rien écrire. `digest` écrit les nouveautés dans un fichier privé (mode 0600, ignoré par git). `run` envoie aussi le digest par email si les variables SMTP sont définies (`--no-email` pour l'éviter), et synchronise l'état avec S3 si `VIGIE_STATE_BUCKET` l'est.
 
-## Exécution planifiée (GitHub Actions)
+## Exécution planifiée : code public, exécution privée
 
-Le workflow [`radar.yml`](.github/workflows/radar.yml) lance `vigie radar run` : collecte, envoi du digest par email et synchronisation de l'état avec un bucket S3 privé. Authentification AWS par OIDC (aucune clé stockée), secrets dans l'environnement GitHub `radar`. La mise en place est décrite dans [`docs/aws-setup.md`](docs/aws-setup.md).
+Ce dépôt est **public** : il contient le code, les tests, la CI et des données **fictives**, et il n'a **aucun secret**. L'exécution réelle (vrais critères, vraies entreprises ciblées, CV, secrets, état, logs) a lieu dans un dépôt **privé** `vigie-run`, qui ne contient pas de code Python : son workflow installe une **version taguée** de Vigie (`uv tool install "git+https://github.com/HLeviel/vigie@vX.Y.Z"`, jamais `main`) puis lance `vigie radar run`, qui collecte, envoie le digest par email et synchronise l'état avec un bucket S3 privé. Authentification AWS par OIDC : aucune clé stockée.
 
-> **La planification est livrée commentée** : seul le lancement manuel (Actions > radar > Run workflow) est actif, pour que les forks n'exécutent pas le workflow par erreur. Décommenter le bloc `schedule` de `radar.yml` (05:17 UTC) une fois la mise en place validée.
+- Modèle du dépôt privé, pas à pas (bucket S3, rôle IAM, environnement GitHub `radar`, secrets) : [`examples/vigie-run/`](examples/vigie-run/README.md).
+- Publier une version : mettre à jour `version` dans `pyproject.toml`, puis pousser un tag `vX.Y.Z` ; [`release.yml`](.github/workflows/release.yml) relance la CI, vérifie que le tag correspond à la version du paquet, puis crée la release avec son journal des changements.
+- Sécurité et fuite de secret : [`SECURITY.md`](SECURITY.md).
 
 Codes de sortie de `run` : `0` succès, `1` erreur de configuration ou de secrets, `2` toutes les sources ont échoué, `3` au moins une source a échoué, `4` envoi du digest échoué, `5` état S3 inaccessible ou non synchronisé.
 

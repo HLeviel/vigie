@@ -1,0 +1,81 @@
+name: radar
+
+# VARIANTE DE REPLI, à n'utiliser que si le bucket S3 n'est pas encore en place : l'état (`radar.db`)
+# est commité dans `state/` du dépôt PRIVÉ `vigie-run` à la fin de chaque exécution. À renommer en
+# `radar.yml` (en remplacement du modèle S3), jamais les deux à la fois.
+#
+# C'est le seul cas où le workflow reçoit `contents: write` ; il n'a alors ni accès AWS ni `id-token`.
+# Ne JAMAIS utiliser cette variante dans un dépôt public : `state/radar.db` contient les offres retenues.
+on:
+  schedule:
+    - cron: "17 5 * * *"   # tous les jours à 05:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: radar
+  cancel-in-progress: false
+
+env:
+  # Version de Vigie : un tag du dépôt public, jamais `main`.
+  VIGIE_REF: v0.1.0
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: radar
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        # Ici seulement, le jeton reste disponible : il sert au `git push` de l'état.
+        with:
+          persist-credentials: true
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      - name: Installer Vigie à la version épinglée
+        run: uv tool install "git+https://github.com/HLeviel/vigie@${VIGIE_REF}"
+      - name: Ajouter les outils uv au PATH
+        run: echo "$(uv tool dir --bin)" >> "$GITHUB_PATH"
+      - name: Vérifier la configuration et les secrets
+        run: vigie radar check --config config/radar.yaml
+        env:
+          ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
+          ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
+          IMAP_HOST: ${{ secrets.IMAP_HOST }}
+          IMAP_USER: ${{ secrets.IMAP_USER }}
+          IMAP_PASSWORD: ${{ secrets.IMAP_PASSWORD }}
+          IMAP_FOLDER: ${{ secrets.IMAP_FOLDER }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          DIGEST_TO: ${{ secrets.DIGEST_TO }}
+      - name: Collecter et envoyer le digest
+        id: run
+        run: vigie radar run --config config/radar.yaml --db state/radar.db
+        env:
+          ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
+          ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
+          IMAP_HOST: ${{ secrets.IMAP_HOST }}
+          IMAP_USER: ${{ secrets.IMAP_USER }}
+          IMAP_PASSWORD: ${{ secrets.IMAP_PASSWORD }}
+          IMAP_FOLDER: ${{ secrets.IMAP_FOLDER }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          DIGEST_TO: ${{ secrets.DIGEST_TO }}
+        # L'état doit être conservé même si une source a échoué (codes 2, 3 ou 4), sinon des offres
+        # déjà notifiées reviendraient : l'étape suivante s'exécute donc toujours.
+        continue-on-error: true
+      - name: Commiter l'état
+        run: |
+          git config user.name "vigie-run"
+          git config user.email "vigie-run@users.noreply.github.com"
+          git add state/radar.db
+          git diff --cached --quiet || git commit -m "état de la collecte"
+          git push
+      - name: Échouer si la collecte a échoué
+        if: steps.run.outcome == 'failure'
+        run: exit 1

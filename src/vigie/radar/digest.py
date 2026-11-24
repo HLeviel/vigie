@@ -23,7 +23,18 @@ from vigie.radar.models import ContractType, Offer
 from vigie.radar.store import Store
 
 PARIS = ZoneInfo("Europe/Paris")
-TEMPLATE_DIR = Path(__file__).resolve().parents[3] / "templates"
+
+
+def _template_dir() -> Path:
+    """Paquet installé (``vigie/templates``) d'abord, sinon dépôt source (``templates/``)."""
+    here = Path(__file__).resolve()
+    for candidate in (here.parents[1] / "templates", here.parents[3] / "templates"):
+        if (candidate / "digest.html.j2").is_file():
+            return candidate
+    raise FileNotFoundError("modèle du digest introuvable (templates/digest.html.j2)")
+
+
+TEMPLATE_DIR = _template_dir()
 HTML_TEMPLATE = "digest.html.j2"
 NBSP = " "
 MAX_TITLE = 200

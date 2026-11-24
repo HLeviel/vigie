@@ -60,9 +60,9 @@ def _fail(message: str) -> typer.Exit:
     return typer.Exit(EXIT_CONFIG)
 
 
-def _load(config_path: Path | None, settings: Settings) -> RadarConfig:
+def _load(config_path: Path | None) -> RadarConfig:
     try:
-        return resolve_config(config_path, settings)
+        return resolve_config(config_path)
     except ConfigError as exc:
         raise _fail(str(exc)) from None
 
@@ -110,7 +110,7 @@ def check(
 ) -> None:
     """Vérifie la configuration et la présence des secrets, sans appel réseau."""
     settings = _settings()
-    cfg = _load(config, settings)
+    cfg = _load(config)
     typer.echo(f"configuration valide : {len(cfg.searches)} recherche(s)")
     try:
         plan = plan_sources(cfg, settings)
@@ -155,7 +155,7 @@ def run(
 ) -> None:
     """Collecte, dédoublonne, filtre, stocke, puis envoie le digest et synchronise l'état S3."""
     settings = _settings()
-    cfg = _load(config, settings)
+    cfg = _load(config)
     try:
         plan = plan_sources(cfg, settings, only=source)
     except UnknownSourceSelectionError as exc:
@@ -301,7 +301,7 @@ def digest(
 ) -> None:
     """Génère le digest des nouveautés depuis la base, sans collecter."""
     settings = _settings()
-    cfg = _load(config, settings)
+    cfg = _load(config)
     path = _db_path(db, settings)
     if not path.exists():
         raise _fail("aucune base : lancer d'abord `vigie radar run`")

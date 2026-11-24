@@ -1,0 +1,36 @@
+name: release
+
+# Publie une version à chaque tag vX.Y.Z : le dépôt privé `vigie-run` installe Vigie à cette version
+# (examples/vigie-run/). Le dépôt public n'a aucun secret : seul le jeton GITHUB_TOKEN de l'exécution
+# est utilisé, pour créer la release.
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # créer la release : le seul job du dépôt public qui écrit
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Le nom du tag passe par une variable d'environnement, jamais interpolé dans le script.
+      - name: Vérifier que le tag correspond à la version de pyproject.toml
+        run: python3 scripts/check_release_tag.py "$TAG"
+        env:
+          TAG: ${{ github.ref_name }}
+      - name: Créer la release avec le journal des changements
+        run: gh release create "$TAG" --title "$TAG" --generate-notes --verify-tag
+        env:
+          TAG: ${{ github.ref_name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}

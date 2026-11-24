@@ -1,6 +1,6 @@
 [project]
 name = "vigie"
-version = "0.0.0"
+version = "0.1.0"
 description = "Copilote IA de recherche d'emploi pour le marché français"
 readme = "README.md"
 license = { text = "MIT" }
@@ -38,6 +38,11 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/vigie"]
+
+# `vigie-run` installe Vigie depuis un tag : le modèle du digest, à la racine du dépôt (section 4 de
+# la spec), doit aussi être dans le paquet installé.
+[tool.hatch.build.targets.wheel.force-include]
+"templates" = "vigie/templates"
 
 [tool.ruff]
 line-length = 100

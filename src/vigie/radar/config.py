@@ -7,7 +7,6 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from vigie.radar.models import SearchQuery
-from vigie.settings import Settings
 
 DEFAULT_CONFIG_PATH = Path("config/radar.yaml")
 
@@ -108,15 +107,14 @@ def load_config_file(path: Path) -> RadarConfig:
     return load_config_text(text)
 
 
-def resolve_config(path: Path | None, settings: Settings) -> RadarConfig:
-    """Ordre : ``--config``, secret ``VIGIE_RADAR_CONFIG``, puis ``config/radar.yaml``."""
+def resolve_config(path: Path | None) -> RadarConfig:
+    """``--config``, sinon ``config/radar.yaml``.
+
+    La vraie configuration (critères, entreprises ciblées) vit dans le dépôt privé d'exécution
+    (``vigie-run``) : elle n'est jamais un secret d'environnement ni un fichier du dépôt public.
+    """
     if path is not None:
         return load_config_file(path)
-    if settings.vigie_radar_config is not None:
-        return load_config_text(settings.vigie_radar_config.get_secret_value())
     if DEFAULT_CONFIG_PATH.exists():
         return load_config_file(DEFAULT_CONFIG_PATH)
-    raise ConfigError(
-        "Aucune configuration : utiliser --config, la variable VIGIE_RADAR_CONFIG "
-        f"ou le fichier {DEFAULT_CONFIG_PATH}"
-    )
+    raise ConfigError(f"Aucune configuration : utiliser --config ou créer {DEFAULT_CONFIG_PATH}")
