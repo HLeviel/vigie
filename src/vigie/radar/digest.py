@@ -11,13 +11,16 @@ Ce module ne marque rien comme notifié : c'est l'envoi réussi (étape 8) ou l'
 
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from jinja2 import Environment, FileSystemLoader
+from pydantic import ValidationError
 
+from vigie.match.scoring import ScoreDetails
+from vigie.match.store import ScoreStore, ScoringKey
 from vigie.radar.config import DigestConfig
 from vigie.radar.models import ContractType, Offer
 from vigie.radar.store import Store
@@ -106,6 +109,11 @@ class DigestItem:
     source: str
     url: str
     suspicious: bool
+    # Scoring (module match) : absents tant que l'offre n'est pas scorée.
+    score: int | None = None
+    found_skills: tuple[str, ...] = ()
+    missing_skills: tuple[str, ...] = ()
+    low_confidence: bool = False
 
     @classmethod
     def from_offer(cls, offer: Offer) -> "DigestItem":
@@ -122,11 +130,34 @@ class DigestItem:
             suspicious=offer.suspicious,
         )
 
+    def with_score(self, score: float, details: ScoreDetails) -> "DigestItem":
+        """Ajoute le score et l'explication (2 compétences trouvées et 1 manquante au plus)."""
+        found = [*details.found_must_have, *details.found_nice_to_have][:2]
+        return replace(
+            self,
+            score=round(score),
+            found_skills=tuple(clean_text(s, 40) for s in found),
+            missing_skills=tuple(clean_text(s, 40) for s in details.missing_must_have[:1]),
+            low_confidence=details.confidence == "faible",
+        )
+
     def meta_parts(self, escape: Callable[[str], str] = lambda text: text) -> list[str]:
         """Détails de l'offre ; ``escape`` s'applique aux seuls textes venant de l'offre."""
         parts = [escape(self.company), escape(self.location), self.contract, self.salary]
         parts = [p for p in parts if p]
-        return [*parts, f"publiée le {self.date}", f"source : {escape(self.source)}"]
+        scoring = [f"score {self.score}/100"] if self.score is not None else []
+        if self.low_confidence:
+            scoring.append("confiance faible")
+        return [*scoring, *parts, f"publiée le {self.date}", f"source : {escape(self.source)}"]
+
+    def explanation(self, escape: Callable[[str], str] = lambda text: text) -> str:
+        """Une ligne : compétences trouvées et manquante ; vide sans scoring."""
+        pieces = []
+        if self.found_skills:
+            pieces.append("trouvées : " + ", ".join(escape(s) for s in self.found_skills))
+        if self.missing_skills:
+            pieces.append("manque : " + ", ".join(escape(s) for s in self.missing_skills))
+        return " · ".join(pieces)
 
     @property
     def meta(self) -> str:
@@ -145,10 +176,16 @@ class SourceSummary:
     error_type: str | None = None
 
     def render(self, escape: Callable[[str], str] = lambda text: text) -> str:
-        line = (
-            f"{escape(self.source)} : récupérées {self.fetched}, nouvelles {self.new}, "
-            f"filtrées {self.filtered}, doublons {self.duplicates}, erreurs {self.errors}"
-        )
+        if self.source == "match":  # ligne du scoring : mêmes colonnes, autre sens
+            line = (
+                f"match : à scorer {self.fetched}, scorées {self.new}, "
+                f"exclues par préférence {self.filtered}"
+            )
+        else:
+            line = (
+                f"{escape(self.source)} : récupérées {self.fetched}, nouvelles {self.new}, "
+                f"filtrées {self.filtered}, doublons {self.duplicates}, erreurs {self.errors}"
+            )
         if self.failed:
             line += f" (ÉCHEC : {escape(self.error_type or 'erreur')})"
         return line
@@ -178,6 +215,10 @@ class Digest:
     generated_at: datetime
     run: RunSummary | None = None
     format: str = "html"
+    below_threshold: int = 0  # offres scorées sous ``min_score`` : comptées, pas listées
+    below_uids: tuple[str, ...] = ()
+    scored: bool = False  # vrai si les offres sont triées par score
+    note: str = ""  # mention du pied (ex. scoring indisponible)
 
     @property
     def has_failure(self) -> bool:
@@ -191,6 +232,10 @@ class Digest:
     @property
     def title(self) -> str:
         if not self.items:
+            if self.run is not None and not any(
+                s.failed for s in self.run.sources if s.source != "match"
+            ):
+                return "Vigie : alerte, le scoring a échoué"
             return "Vigie : alerte, une source a échoué"
         n = len(self.items)
         return f"Vigie : {n} nouvelle{'s' if n > 1 else ''} offre{'s' if n > 1 else ''}"
@@ -201,6 +246,14 @@ class Digest:
         text = f"Généré le {stamp} (heure de Paris)."
         if self.total > len(self.items):
             text += f" {len(self.items)} offres affichées sur {self.total} à notifier."
+        if self.below_threshold:
+            plural = "s" if self.below_threshold > 1 else ""
+            text += (
+                f" {self.below_threshold} offre{plural} sous le seuil de pertinence "
+                f"(non listée{plural})."
+            )
+        if self.scored:
+            text += " Triées par score décroissant."
         return text
 
     @property
@@ -226,37 +279,95 @@ def _error_type(message: str | None) -> str | None:
     return str(message).split(":", 1)[0] if message else None
 
 
-def build_digest(store: Store, config: DigestConfig, now: datetime) -> Digest:
-    offers = store.pending_offers(limit=config.max_items)
+def _run_summary(store: Store) -> RunSummary | None:
     runs = store.recent_runs(1)
-    run: RunSummary | None = None
-    if runs:
-        last = runs[0]
-        run = RunSummary(
-            started_at=datetime.fromisoformat(last["started_at"]),
-            status=str(last["status"]),
-            sources=tuple(
-                SourceSummary(
-                    source=str(s["source"]),
-                    fetched=int(s["fetched"]),
-                    new=int(s["new"]),
-                    filtered=int(s["filtered"]),
-                    duplicates=int(s["duplicates"]),
-                    errors=int(s["errors"]),
-                    failed=s["error_message"] is not None,
-                    error_type=str(s["error_message"]).split(":", 1)[0]
-                    if s["error_message"]
-                    else None,
-                )
-                for s in last["sources"]
-            ),
-        )
+    if not runs:
+        return None
+    last = runs[0]
+    return RunSummary(
+        started_at=datetime.fromisoformat(last["started_at"]),
+        status=str(last["status"]),
+        sources=tuple(
+            SourceSummary(
+                source=str(s["source"]),
+                fetched=int(s["fetched"]),
+                new=int(s["new"]),
+                filtered=int(s["filtered"]),
+                duplicates=int(s["duplicates"]),
+                errors=int(s["errors"]),
+                failed=s["error_message"] is not None,
+                error_type=str(s["error_message"]).split(":", 1)[0] if s["error_message"] else None,
+            )
+            for s in last["sources"]
+        ),
+    )
+
+
+SCORING_UNAVAILABLE = "Scoring indisponible ou incomplet : offres triées par date, sans score."
+
+
+def _scored_items(
+    offers: list[Offer], scoring: ScoringKey, store: Store
+) -> tuple[list[DigestItem], list[str]] | None:
+    """Offres triées par score décroissant (celles sous le seuil à part) ; ``None`` si une offre
+    n'a pas de score valide : le digest retombe alors sur l'ordre par date."""
+    stored = ScoreStore(store).get_many([o.uid for o in offers], scoring)
+    if len(stored) != len(offers):
+        return None
+    ranked: list[tuple[float, Offer, DigestItem]] = []
+    below: list[str] = []
+    for offer in offers:
+        score, details_json = stored[offer.uid]
+        try:
+            details = ScoreDetails.model_validate_json(details_json)
+        except ValidationError:
+            return None
+        if details.excluded or score < scoring.min_score:
+            below.append(offer.uid)
+        else:
+            ranked.append((score, offer, DigestItem.from_offer(offer).with_score(score, details)))
+    ranked.sort(key=lambda r: (-r[0], -r[1].published_at.timestamp(), r[1].uid))
+    return [item for _, _, item in ranked], below
+
+
+def build_digest(
+    store: Store,
+    config: DigestConfig,
+    now: datetime,
+    scoring: ScoringKey | None = None,
+    note: str | None = None,
+) -> Digest:
+    """Digest des offres à notifier.
+
+    Sans ``scoring`` (module match absent ou désactivé) : de la plus récente à la plus ancienne.
+    Avec ``scoring`` : triées par score ; si une offre n'a pas de score, retour à l'ordre par date
+    avec une mention (une panne du scoring ne bloque jamais le digest).
+    """
+    run = _run_summary(store)
+    if scoring is not None and note is None:
+        offers = store.pending_offers()
+        ranked = _scored_items(offers, scoring, store)
+        if ranked is not None:
+            listed, below = ranked
+            return Digest(
+                items=tuple(listed[: config.max_items]),
+                total=len(listed),
+                generated_at=now,
+                run=run,
+                format=config.format,
+                below_threshold=len(below),
+                below_uids=tuple(below),
+                scored=True,
+            )
+        note = SCORING_UNAVAILABLE
+    offers = store.pending_offers(limit=config.max_items)
     return Digest(
         items=tuple(DigestItem.from_offer(o) for o in offers),
         total=store.count_pending(),
         generated_at=now,
         run=run,
         format=config.format,
+        note=note or "",
     )
 
 
@@ -281,6 +392,8 @@ def render_markdown(digest: Digest) -> str:
         for item in digest.items:
             lines.append(f"- [{md_escape(item.title)}]({md_url(item.url)})")
             lines.append("  " + " · ".join(item.meta_parts(md_escape)))
+            if item.explanation():
+                lines.append("  " + item.explanation(md_escape))
             if item.suspicious:
                 lines.append(
                     "  ⚠ Contenu suspect (instructions ou caractères invisibles) : "
@@ -295,6 +408,8 @@ def render_markdown(digest: Digest) -> str:
         lines += [f"- {line}" for line in digest.run_lines_markdown()]
     else:
         lines.append("Aucune exécution enregistrée.")
+    if digest.note:
+        lines += ["", f"_{digest.note}_"]
     return "\n".join(lines) + "\n"
 
 
@@ -305,6 +420,8 @@ def render_text(digest: Digest) -> str:
         for number, item in enumerate(digest.items, start=1):
             lines.append(f"{number}. {item.title}")
             lines.append("   " + " · ".join(item.meta_parts()))
+            if item.explanation():
+                lines.append("   " + item.explanation())
             lines.append(f"   {item.url}")
             if item.suspicious:
                 lines.append("   ⚠ Contenu suspect : lire avec prudence.")
@@ -313,6 +430,8 @@ def render_text(digest: Digest) -> str:
         lines += ["Aucune nouvelle offre.", ""]
     lines += ["Dernière exécution", digest.run_label or "Aucune exécution enregistrée."]
     lines += [f"- {line.text}" for line in digest.run_lines]
+    if digest.note:
+        lines += ["", digest.note]
     return "\n".join(lines) + "\n"
 
 

@@ -11,7 +11,7 @@ from pathlib import Path
 from types import TracebackType
 from typing import Any, Self
 
-from vigie.match.schema import EMBEDDINGS_MIGRATION
+from vigie.match.schema import EMBEDDINGS_MIGRATION, SCORES_MIGRATION
 from vigie.radar.models import Offer, SourceReport
 
 DEFAULT_DB_PATH = Path.home() / ".local" / "share" / "vigie" / "radar.db"
@@ -77,6 +77,7 @@ MIGRATIONS: list[str] = [
     );
     """,
     EMBEDDINGS_MIGRATION,
+    SCORES_MIGRATION,
 ]
 SCHEMA_VERSION = len(MIGRATIONS)
 

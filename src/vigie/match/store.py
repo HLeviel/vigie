@@ -6,6 +6,7 @@ Même base et mêmes migrations que ``radar`` (voir ``vigie.match.schema``). Les
 
 import sqlite3
 import struct
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from vigie.radar.store import Store
@@ -58,3 +59,56 @@ class EmbeddingStore:
             (f"profile:{keep_hash}:%",),
         )
         return cursor.rowcount
+
+
+@dataclass(frozen=True)
+class ScoringKey:
+    """Ce qui rend un score valable : profil, modèle d'embedding et réglage du scoring."""
+
+    profile_hash: str
+    model: str  # nom de l'embedder, ex. « local:<modèle> »
+    signature: str  # réglage du scoring (voir ``scoring.scoring_signature``)
+    min_score: float = 0.0  # seuil d'affichage du digest (ne fait pas partie de la clé stockée)
+    stage: str = "hybrid"
+
+
+class ScoreStore:
+    def __init__(self, store: Store) -> None:
+        self._conn: sqlite3.Connection = store.connection
+
+    def put(
+        self, uid: str, key: ScoringKey, score: float, details_json: str, now: datetime
+    ) -> None:
+        self._conn.execute(
+            "INSERT OR REPLACE INTO scores (uid, profile_hash, stage, model, prompt_version, "
+            "score, details, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                uid,
+                key.profile_hash,
+                key.stage,
+                key.model,
+                key.signature,
+                score,
+                details_json,
+                now.astimezone(UTC).isoformat(),
+            ),
+        )
+
+    def get_many(self, uids: list[str], key: ScoringKey) -> dict[str, tuple[float, str]]:
+        """``uid -> (score, details JSON)`` pour les offres déjà scorées avec cette clé."""
+        found: dict[str, tuple[float, str]] = {}
+        for start in range(0, len(uids), 500):  # limite de variables SQLite
+            chunk = uids[start : start + 500]
+            marks = ",".join("?" * len(chunk))
+            rows = self._conn.execute(
+                "SELECT uid, score, details FROM scores "  # noqa: S608 (marqueurs constants)
+                f"WHERE profile_hash = ? AND stage = ? AND model = ? AND prompt_version = ? "
+                f"AND uid IN ({marks})",
+                (key.profile_hash, key.stage, key.model, key.signature, *chunk),
+            ).fetchall()
+            for row in rows:
+                found[str(row["uid"])] = (float(row["score"]), str(row["details"]))
+        return found
+
+    def count(self) -> int:
+        return int(self._conn.execute("SELECT COUNT(*) FROM scores").fetchone()[0])
