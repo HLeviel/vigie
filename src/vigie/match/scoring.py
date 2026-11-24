@@ -4,6 +4,8 @@ Déterministe, sans réseau : les vecteurs viennent d'un ``Embedder`` (réel ou 
 offre est une donnée : il est comparé, jamais interprété.
 """
 
+import hashlib
+import json
 import math
 import re
 from collections.abc import Sequence
@@ -16,7 +18,7 @@ from vigie.match.config import MatchConfig
 from vigie.match.embedders.base import Embedder
 from vigie.match.embedders.cache import embed_cached
 from vigie.match.profile import SYNONYMS, Profile, normalize_skill
-from vigie.match.store import EmbeddingStore
+from vigie.match.store import EmbeddingStore, ScoringKey
 from vigie.match.text import (
     Confidence,
     ProfileText,
@@ -226,3 +228,32 @@ class Scorer:
                 confidence=confidence,
             ),
         )
+
+
+# À incrémenter quand le calcul du score change : les anciens scores deviennent obsolètes.
+SCORING_VERSION = 1
+
+
+def scoring_signature(config: MatchConfig) -> str:
+    """Empreinte courte du réglage qui influe sur le score (poids, pénalités, k, bornes)."""
+    payload = json.dumps(
+        {
+            "version": SCORING_VERSION,
+            "weights": config.weights.model_dump(),
+            "penalties": config.penalties.model_dump(),
+            "top_k_profile": config.top_k_profile,
+            "semantic": [SEMANTIC_FLOOR, SEMANTIC_CEILING],
+            "lexical": LEXICAL_WEIGHTS,
+        },
+        sort_keys=True,
+    )
+    return hashlib.sha256(payload.encode()).hexdigest()[:12]
+
+
+def scoring_key(config: MatchConfig, profile: Profile, embedder_name: str) -> ScoringKey:
+    return ScoringKey(
+        profile_hash=profile.profile_hash,
+        model=embedder_name,
+        signature=scoring_signature(config),
+        min_score=config.digest.min_score,
+    )

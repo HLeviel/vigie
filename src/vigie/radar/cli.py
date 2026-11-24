@@ -15,12 +15,16 @@ from typing import Annotated
 import typer
 
 from vigie.match.cli import app as match_app
+from vigie.match.profile import ProfileError
+from vigie.match.runner import MATCH_SOURCE, MatchReport, key_for, run_match
+from vigie.match.store import ScoringKey
 from vigie.radar.config import ConfigError, RadarConfig, resolve_config
-from vigie.radar.digest import build_digest, render
+from vigie.radar.digest import SCORING_UNAVAILABLE, build_digest, render
 from vigie.radar.notify import DigestSender, NotifyError, SmtpSender
 from vigie.radar.pipeline import (
     EXIT_CONFIG,
     EXIT_DELIVERY,
+    EXIT_MATCH,
     EXIT_STATE,
     SourcePlan,
     UnknownSourceSelectionError,
@@ -67,6 +71,16 @@ def _load(config_path: Path | None) -> RadarConfig:
         return resolve_config(config_path)
     except ConfigError as exc:
         raise _fail(str(exc)) from None
+
+
+def _scoring_key(cfg: RadarConfig) -> tuple[ScoringKey | None, str | None]:
+    """Clé de scoring du digest, ou un message si le profil est illisible (digest par date)."""
+    if cfg.match is None or not cfg.match.enabled:
+        return None, None
+    try:
+        return key_for(cfg.match), None
+    except ProfileError:
+        return None, "Scoring indisponible (profil illisible) : offres triées par date."
 
 
 def _db_path(db: Path | None, settings: Settings) -> Path:
@@ -197,9 +211,17 @@ def run(
         now = datetime.now(UTC)
         with store:
             result = run_pipeline(cfg, settings, store, plan, since=since_utc)
+            match_report: MatchReport | None = None
+            if cfg.match is not None and cfg.match.enabled:
+                match_report = run_match(cfg.match, store)
+                store.add_run_source(result.report.run_id, match_report.as_source_report())
+                store.commit()
             delivery = "disabled"
             if not dry_run and can_send:
-                digest = build_digest(store, cfg.digest, now)
+                scoring, scoring_note = _scoring_key(cfg)
+                if match_report is not None and match_report.failed:
+                    scoring, scoring_note = None, SCORING_UNAVAILABLE  # panne : tri par date
+                digest = build_digest(store, cfg.digest, now, scoring, scoring_note)
                 if not digest.should_send:
                     delivery = "nothing"
                 else:
@@ -208,7 +230,9 @@ def run(
                     except NotifyError as exc:
                         delivery = f"failed:{exc}"
                     else:
-                        store.mark_notified([item.uid for item in digest.items], now)
+                        store.mark_notified(
+                            [*(item.uid for item in digest.items), *digest.below_uids], now
+                        )
                         delivery = f"sent:{len(digest.items)}/{digest.total}"
             pending = store.count_pending()
 
@@ -231,11 +255,15 @@ def run(
             f"filtrées={report.filtered} doublons={report.duplicates} "
             f"erreurs={report.errors} ({report.duration_ms} ms){flag}"
         )
+    if match_report is not None:
+        typer.echo(_describe_match(match_report))
     typer.echo(f"offres à notifier : {pending}")
     typer.echo(_describe_delivery(delivery, dry_run, send_email, bool(email_missing)))
     if dry_run:
         typer.echo("dry-run : rien n'a été écrit, aucun email envoyé")
     code = result.exit_code
+    if match_report is not None and match_report.failed:
+        code = EXIT_MATCH
     if delivery.startswith("failed"):
         code = EXIT_DELIVERY
     if state_failed:
@@ -246,7 +274,14 @@ def run(
 # Exceptions au message fixe, sans donnée sensible (ni critère, ni hôte, ni identifiant) : seul leur
 # message peut être affiché. Pour toute autre exception, on n'affiche que son type.
 SAFE_ERROR_TYPES = frozenset(
-    {"MailboxError", "NotifyError", "StateSyncError", "MissingSettingsError"}
+    {
+        "MailboxError",
+        "NotifyError",
+        "StateSyncError",
+        "MissingSettingsError",
+        "EmbedderError",  # messages fixes, sans texte d'offre ni message du fournisseur
+        "ProfileError",  # chemins de champs seulement, jamais une valeur
+    }
 )
 
 
@@ -258,6 +293,15 @@ def failure_reason(error_message: str | None) -> str:
     if kind in SAFE_ERROR_TYPES and detail:
         return f" ({kind} : {detail})"
     return f" ({kind})"
+
+
+def _describe_match(report: MatchReport) -> str:
+    if report.failed:
+        return "match : ÉCHEC" + failure_reason(report.error_message) + ", digest trié par date"
+    return (
+        f"{MATCH_SOURCE} : à scorer={report.pending} scorées={report.scored} "
+        f"exclues={report.excluded} appels LLM={report.llm_calls}"
+    )
 
 
 def _describe_delivery(delivery: str, dry_run: bool, send_email: bool, not_configured: bool) -> str:
@@ -332,7 +376,8 @@ def digest(
     except StoreError as exc:
         raise _fail(str(exc)) from None
     with store:
-        result = build_digest(store, cfg.digest, now)
+        scoring, scoring_note = _scoring_key(cfg)
+        result = build_digest(store, cfg.digest, now, scoring, scoring_note)
         if not result.should_send:
             typer.echo("aucune nouvelle offre et aucune source en échec : rien à écrire")
             return
@@ -343,7 +388,7 @@ def digest(
         else:
             _write_private(Path(target), content)
         if mark_notified and result.items:
-            store.mark_notified([item.uid for item in result.items], now)
+            store.mark_notified([*(item.uid for item in result.items), *result.below_uids], now)
     typer.echo(
         f"digest : {len(result.items)} offre(s) affichée(s) sur {result.total} à notifier"
         + (" (alerte : une source a échoué)" if result.has_failure else ""),

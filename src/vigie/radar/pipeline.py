@@ -31,6 +31,7 @@ EXIT_ALL_FAILED = 2
 EXIT_SOME_FAILED = 3
 EXIT_DELIVERY = 4  # envoi du digest échoué (les offres restent à notifier)
 EXIT_STATE = 5  # état S3 inaccessible ou non synchronisé
+EXIT_MATCH = 6  # scoring en échec (le digest part quand même) ; priorité 5 > 4 > 6 > 3 > 2
 
 
 @dataclass

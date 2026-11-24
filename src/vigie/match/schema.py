@@ -17,3 +17,20 @@ CREATE TABLE embeddings (
     PRIMARY KEY (owner, model, text_hash)
 );
 """
+
+# Clé : (uid, profile_hash, stage, model, prompt_version). Étage ``hybrid`` : ``prompt_version``
+# porte la signature du réglage du scoring (poids, pénalités, k) ; étage ``llm`` (M3) : la version
+# du prompt.
+SCORES_MIGRATION = """
+CREATE TABLE scores (
+    uid TEXT NOT NULL,
+    profile_hash TEXT NOT NULL,
+    stage TEXT NOT NULL,
+    model TEXT NOT NULL,
+    prompt_version TEXT NOT NULL,
+    score REAL NOT NULL,
+    details TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (uid, profile_hash, stage, model, prompt_version)
+);
+"""
