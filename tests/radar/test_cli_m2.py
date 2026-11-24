@@ -379,7 +379,7 @@ def test_check_rejects_a_partially_configured_smtp(
     assert "smtp.example.org" not in result.output
 
 
-# --- raisons d'échec lisibles, sans donnée sensible ------------------------------------------------
+# --- raisons d'échec lisibles, sans donnée sensible ---
 
 
 def test_failed_source_shows_the_reason_of_safe_exceptions(
