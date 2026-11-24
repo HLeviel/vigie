@@ -1,5 +1,6 @@
-# Configuration FICTIVE, commitée. Copier vers config/radar.yaml (ignoré par git) ou fournir le
-# contenu réel via le secret VIGIE_RADAR_CONFIG. Ne jamais committer de critères ni d'entreprises réels.
+# Configuration FICTIVE, commitée. La vraie configuration (critères, entreprises ciblées) vit dans le
+# dépôt PRIVÉ `vigie-run` (config/radar.yaml), passée par `--config`. En local, copier ce fichier vers
+# config/radar.yaml (ignoré par git). Ne jamais committer de critères ni d'entreprises réels ici.
 
 sources:
   adzuna: { enabled: true }

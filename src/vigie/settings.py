@@ -60,9 +60,8 @@ class Settings(BaseSettings):
     # Chemin de la base SQLite (non secret) ; défaut : ~/.local/share/vigie/radar.db
     vigie_db_path: Path | None = None
 
-    # État et configuration réelle (lot M2)
+    # État persistant (lot M2)
     vigie_state_bucket: str | None = None
-    vigie_radar_config: SecretStr | None = None
 
     def missing(self, features: Iterable[str]) -> list[str]:
         """Noms des variables absentes pour les fonctionnalités données."""

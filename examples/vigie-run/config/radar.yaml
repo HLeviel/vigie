@@ -1,0 +1,36 @@
+# Configuration FICTIVE, commitée. La vraie configuration (critères, entreprises ciblées) vit dans le
+# dépôt PRIVÉ `vigie-run` (config/radar.yaml), passée par `--config`. En local, copier ce fichier vers
+# config/radar.yaml (ignoré par git). Ne jamais committer de critères ni d'entreprises réels ici.
+
+sources:
+  adzuna: { enabled: true }
+  ats: { enabled: true }              # greenhouse, lever, ashby, smartrecruiters, recruitee
+  email_alerts: { enabled: true }     # exige IMAP_HOST, IMAP_USER, IMAP_PASSWORD, IMAP_FOLDER ; sinon mettre false
+  france_travail: { enabled: false }  # en attente d'accès
+
+ats_companies:                         # entreprises FICTIVES ; `token` = identifiant de la page carrières
+  - { name: "Exemple IA", platform: greenhouse, token: "exempleia" }
+  - { name: "Startup Data", platform: lever, token: "startupdata" }
+
+email_alerts:
+  allowed_senders:                     # à vérifier sur de vrais emails
+    france_travail: ["@francetravail.fr"]
+    apec: ["@apec.fr"]
+    wttj: ["@welcometothejungle.com"]
+    linkedin: ["@linkedin.com"]
+
+searches:
+  - name: data-ai-lyon
+    keywords: ["data engineer", "machine learning", "IA"]
+    departments: ["69"]
+    contract_types: [CDI, FREELANCE]
+    max_age_days: 7
+
+filters:
+  exclude_title: ["stage", "alternance", "commercial"]
+  exclude_companies: []
+  require_any: ["python", "data", "ia", "machine learning"]   # sur titre + description
+
+digest:
+  max_items: 50
+  format: html          # html ou markdown
