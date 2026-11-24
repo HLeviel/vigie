@@ -5,7 +5,9 @@ et la documentation AWS.
 """
 
 import json
+import os
 import re
+import subprocess
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -112,12 +114,67 @@ def test_release_checks_the_tag_before_publishing_and_never_interpolates_it() ->
     steps = all_steps(load(PUBLIC / "release.yml"))
     commands = [s["run"] for s in steps if "run" in s]
     assert commands[0].startswith("python3 scripts/check_release_tag.py")
-    assert commands[1].startswith("gh release create")
+    assert "gh release create" in commands[1]
     assert "--generate-notes" in commands[1]
     assert "--verify-tag" in commands[1]
+    assert commands[1].index("gh release view") < commands[1].index("gh release create")
     # injection : le nom du tag passe par l'environnement, pas par le texte du script
     assert all("github.ref_name" not in command for command in commands)
     assert all(s["env"]["TAG"] == "${{ github.ref_name }}" for s in steps if "run" in s)
+
+
+def run_release_step(tmp_path: Path, view_ok: bool, create_ok: bool = True) -> tuple[int, str, str]:
+    """Exécute le vrai bloc `run:` de la release avec un faux `gh` qui journalise ses appels."""
+    steps = all_steps(load(PUBLIC / "release.yml"))
+    script = next(s["run"] for s in steps if "gh release create" in s.get("run", ""))
+    log = tmp_path / "gh.log"
+    fake = tmp_path / "gh"
+    fake.write_text(
+        "#!/bin/sh\n"
+        'echo "$@" >> "$GH_LOG"\n'
+        'case "$1 $2" in\n'
+        f'  "release view") exit {0 if view_ok else 1} ;;\n'
+        f'  "release create") exit {0 if create_ok else 1} ;;\n'
+        "esac\n"
+    )
+    fake.chmod(0o755)
+    env = {
+        **os.environ,
+        "PATH": f"{tmp_path}:{os.environ['PATH']}",
+        "GH_LOG": str(log),
+        "TAG": "v9.9.9",
+    }
+    # le runner GitHub exécute les étapes avec `bash -e`
+    done = subprocess.run(  # noqa: S603
+        ["bash", "-e", "-c", script],  # noqa: S607
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return done.returncode, log.read_text() if log.exists() else "", done.stdout
+
+
+def test_release_step_does_nothing_if_the_release_already_exists(tmp_path: Path) -> None:
+    code, calls, out = run_release_step(tmp_path, view_ok=True)
+    assert code == 0
+    assert calls.splitlines() == ["release view v9.9.9"]  # aucune création
+    assert "existe déjà" in out
+
+
+def test_release_step_creates_the_release_when_missing(tmp_path: Path) -> None:
+    code, calls, _ = run_release_step(tmp_path, view_ok=False)
+    assert code == 0
+    assert calls.splitlines() == [
+        "release view v9.9.9",
+        "release create v9.9.9 --title v9.9.9 --generate-notes --verify-tag",
+    ]
+
+
+def test_release_step_still_fails_on_a_real_creation_error(tmp_path: Path) -> None:
+    code, calls, _ = run_release_step(tmp_path, view_ok=False, create_ok=False)
+    assert code != 0  # une vraie erreur ne doit pas être avalée
+    assert "release create" in calls
 
 
 # --- modèle du dépôt privé : examples/vigie-run/ ---
