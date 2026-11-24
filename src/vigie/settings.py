@@ -18,6 +18,7 @@ REQUIRED_BY_FEATURE: dict[str, tuple[str, ...]] = {
     "imap": ("IMAP_HOST", "IMAP_USER", "IMAP_PASSWORD", "IMAP_FOLDER"),
     "email": ("SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD", "DIGEST_TO"),
     "state_s3": ("VIGIE_STATE_BUCKET",),
+    "llm_anthropic": ("ANTHROPIC_API_KEY",),
 }
 
 
@@ -56,6 +57,9 @@ class Settings(BaseSettings):
     smtp_user: SecretStr | None = None
     smtp_password: SecretStr | None = None
     digest_to: SecretStr | None = None
+
+    # Étage LLM de match (lot M3, fournisseur anthropic)
+    anthropic_api_key: SecretStr | None = None
 
     # Chemin de la base SQLite (non secret) ; défaut : ~/.local/share/vigie/radar.db
     vigie_db_path: Path | None = None

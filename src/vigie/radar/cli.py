@@ -14,6 +14,7 @@ from typing import Annotated
 
 import typer
 
+from vigie.match.cli import app as match_app
 from vigie.radar.config import ConfigError, RadarConfig, resolve_config
 from vigie.radar.digest import build_digest, render
 from vigie.radar.notify import DigestSender, NotifyError, SmtpSender
@@ -36,6 +37,7 @@ root = typer.Typer(
 )
 app = typer.Typer(help="radar : veille quotidienne des offres.", no_args_is_help=True)
 root.add_typer(app, name="radar")
+root.add_typer(match_app, name="match")
 
 ConfigOption = Annotated[
     Path | None, typer.Option("--config", help="Fichier de configuration YAML.")

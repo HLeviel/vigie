@@ -34,3 +34,18 @@ filters:
 digest:
   max_items: 50
   format: html          # html ou markdown
+
+# Scoring des offres (module match, étape 1 : profil et vérification seulement).
+# Décommenter après avoir créé profile/profile.yaml (modèle : config/profile.example.yaml).
+# Aucun modèle d'embedding par défaut : à choisir (l'évaluation du lot M2 en fixera un).
+# match:
+#   enabled: true
+#   profile: profile/profile.yaml
+#   embeddings:
+#     provider: local            # local ou bedrock
+#     model: "<id du modèle>"
+#   weights: { semantic: 0.7, lexical: 0.3 }
+#   penalties: { remote: 15, salary: 15, avoid: 20 }
+#   top_k_profile: 3
+#   llm: { enabled: false }
+#   digest: { min_score: 40 }

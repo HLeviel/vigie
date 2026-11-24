@@ -1,0 +1,34 @@
+# Profil FICTIF : à copier dans le dépôt privé `vigie-run` (profile/profile.yaml) et à remplacer.
+# Le vrai profil ne doit jamais être commité dans le dépôt public.
+
+summary: >
+  Ingénieure données et IA, 8 ans d'expérience : plateformes de données, recherche d'information
+  et applications à base de modèles de langage, déployées sur le cloud.
+target_roles: ["AI engineer", "ML engineer", "data engineer"]
+
+skills:
+  must_have: [python, sql, rag, aws]
+  nice_to_have: [langchain, embeddings]
+  avoid: [sap, cobol]
+
+experiences:                    # du plus récent au plus ancien
+  - title: "Responsable technique"
+    company: "Exemple SAS"
+    start: 2021-01
+    end: null                   # null = en cours
+    description: >
+      Plateforme de recherche documentaire avec modèles de langage et base vectorielle.
+    skills: [python, aws, rag]
+  - title: "Ingénieure données"
+    company: "Société Fictive"
+    start: 2017-09
+    end: 2020-12
+    description: >
+      Pipelines de données et tableaux de bord pour l'équipe produit.
+    skills: [python, sql]
+
+preferences:
+  remote: [FULL, PARTIAL]       # valeurs de Offer.remote acceptées
+  contract_types: [CDI, FREELANCE]
+  min_salary: 55000             # annuel brut en euros ; ignoré si l'offre n'a pas de salaire
+  languages: [fr, en]

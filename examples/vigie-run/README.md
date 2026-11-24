@@ -9,6 +9,7 @@ l'exécute.
 ```
 vigie-run/                       # PRIVÉ
 ├── config/radar.yaml            # vrais critères et vraies entreprises ciblées
+├── profile/profile.yaml         # vrai profil (module match ; modèle fictif fourni ici)
 ├── cv/                          # CV réel (utilisé plus tard par match et cv)
 ├── .github/workflows/radar.yml  # copie de ce modèle
 └── README.md
@@ -24,6 +25,8 @@ vigie-run/                       # PRIVÉ
 3. Remplacer le contenu de `config/radar.yaml` par tes **vrais** critères (`searches`, `filters`) et tes
    **vraies** entreprises (`ats_companies`, avec le `token` de leur page carrières). Ce fichier est
    fourni par `--config` ; il ne doit jamais être commité dans le dépôt public.
+   Pour le module `match`, copier aussi `profile/profile.yaml` (fictif) et le remplacer par ton vrai
+   profil ; `vigie match check` le valide sans appel réseau.
 4. Activer *Secret scanning* et *Push protection* (Settings > Code security).
 
 ## 2. Bucket S3 d'état (privé, versionné, chiffré)
