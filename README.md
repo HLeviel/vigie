@@ -44,12 +44,12 @@ La collecte, le dédoublonnage et les filtres appartiennent à `radar`. Les troi
 
 ## Modules
 
-Spécification détaillée du module `radar` : [`docs/specs/radar.md`](docs/specs/radar.md).
+Spécifications : module `radar` : [`docs/specs/radar.md`](docs/specs/radar.md) ; module `match` : [`docs/specs/match.md`](docs/specs/match.md).
 
 | Module | Rôle | Statut |
 |---|---|---|
 | `radar` | Veille quotidienne des offres, sans LLM | Lots M1 et M2 implémentés ; exécution réelle vérifiée le 24/11/2026 (dépôt privé `vigie-run`, digest reçu, état S3 relu à l'exécution suivante). Alertes email : France Travail vérifié, APEC, WTTJ et LinkedIn non (#16). API France Travail : en attente d'accès (#19) |
-| `match` | Score offre/CV en 3 étages, évaluation precision@k | Prévu |
+| `match` | Score offre/profil en étages (règles, embeddings, LLM), évaluation precision@k | En cours : étape 1 (profil, configuration, `vigie match check`) ; le scoring reste à faire |
 | `cv` | CV et lettre adaptés, packagés en Agent Skill | Prévu |
 | `agent` | Agent LangChain, validation humaine avant action | Prévu |
 
@@ -57,7 +57,7 @@ Seul `radar` est implémenté ; `match`, `cv` et `agent` sont prévus. Le détai
 
 ## Démarrage rapide
 
-> **En cours.** Seul `radar` est partiellement utilisable (collecte Adzuna, stockage, filtres). `match`, `cv` et `agent` n'existent pas encore.
+> **En cours.** Seul `radar` est partiellement utilisable (collecte Adzuna, stockage, filtres). `match` n'a pour l'instant que son profil et la commande `vigie match check` (pas encore de score) ; `cv` et `agent` n'existent pas.
 
 ```bash
 git clone https://github.com/HLeviel/vigie.git

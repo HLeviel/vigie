@@ -1,7 +1,7 @@
 # Vigie : consignes pour Claude Code
 
 ## Spécifications
-- Les spécifications sont dans [`docs/specs/`](docs/specs/) ; le module `radar` : [`docs/specs/radar.md`](docs/specs/radar.md). Les lire avant d'implémenter ou de modifier un module.
+- Les spécifications sont dans [`docs/specs/`](docs/specs/) ; module `radar` : [`docs/specs/radar.md`](docs/specs/radar.md) ; module `match` : [`docs/specs/match.md`](docs/specs/match.md) (les règles transverses de `radar` s'y appliquent). Les lire avant d'implémenter ou de modifier un module.
 - En cas d'ambiguïté ou de contradiction avec la documentation officielle d'une API, **s'arrêter et poser la question** plutôt que deviner.
 
 ## Décisions hors spec (section 18 de la spec)

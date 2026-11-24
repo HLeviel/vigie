@@ -6,6 +6,7 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
+from vigie.match.config import MatchConfig
 from vigie.radar.models import SearchQuery
 
 DEFAULT_CONFIG_PATH = Path("config/radar.yaml")
@@ -73,6 +74,7 @@ class RadarConfig(_Strict):
     searches: list[SearchQuery] = Field(min_length=1)
     filters: FiltersConfig = Field(default_factory=FiltersConfig)
     digest: DigestConfig = Field(default_factory=DigestConfig)
+    match: MatchConfig | None = None
 
 
 def _format_errors(exc: ValidationError) -> str:

@@ -195,6 +195,12 @@ def test_model_config_is_the_fictitious_example() -> None:
     ).read_text()
 
 
+def test_model_profile_is_the_fictitious_example() -> None:
+    assert (MODEL / "profile" / "profile.yaml").read_text() == (
+        ROOT / "config" / "profile.example.yaml"
+    ).read_text()
+
+
 def test_model_installs_a_pinned_tag_never_main() -> None:
     workflow = radar_model()
     assert SEMVER_TAG.match(workflow["env"]["VIGIE_REF"])
