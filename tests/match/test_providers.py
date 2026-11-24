@@ -7,10 +7,15 @@ from botocore.exceptions import BotoCoreError, ClientError
 
 from vigie.match.embedders import base
 from vigie.match.embedders.base import EmbedderError, build_embedder
-from vigie.match.embedders.bedrock import DIMENSIONS, BedrockEmbedder
+from vigie.match.embedders.bedrock import (
+    COHERE_MAX_TEXTS,
+    DIMENSIONS,
+    BedrockEmbedder,
+)
 from vigie.match.embedders.local import LocalEmbedder, load_sentence_transformer
 
 TITAN = "amazon.titan-embed-text-v2:0"
+COHERE = "cohere.embed-multilingual-v3"
 
 
 # --- registre -------------------------------------------------------------------------------------
@@ -125,13 +130,20 @@ def test_unreadable_model_is_a_safe_error(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 class FakeBedrock:
+    """Répond au format de la famille demandée (Titan : ``embedding`` ; Cohere : ``embeddings``)."""
+
     def __init__(self, vector: list[float] | None = None) -> None:
         self.vector = vector if vector is not None else [0.5] * DIMENSIONS
         self.calls: list[dict[str, Any]] = []
 
     def invoke_model(self, **kwargs: Any) -> dict[str, Any]:
         self.calls.append(kwargs)
-        return {"body": io.BytesIO(json.dumps({"embedding": self.vector}).encode())}
+        request = json.loads(kwargs["body"])
+        if "texts" in request:
+            payload: dict[str, Any] = {"embeddings": [self.vector for _ in request["texts"]]}
+        else:
+            payload = {"embedding": self.vector}
+        return {"body": io.BytesIO(json.dumps(payload).encode())}
 
 
 def test_bedrock_sends_the_documented_titan_v2_request() -> None:
@@ -150,11 +162,11 @@ def test_bedrock_sends_the_documented_titan_v2_request() -> None:
     assert embedder.name == f"bedrock:{TITAN}"
 
 
-@pytest.mark.parametrize("model", ["cohere.embed-multilingual-v3", "autre", ""])
+@pytest.mark.parametrize("model", ["cohere.embed-english-v3", "autre", ""])
 def test_other_model_families_are_refused_not_guessed(model: str) -> None:
     with pytest.raises(EmbedderError) as exc:
         BedrockEmbedder(model, FakeBedrock())
-    assert "Titan" in str(exc.value)
+    assert "Titan" in str(exc.value) and "Cohere" in str(exc.value)
 
 
 def client_error(code: str, message: str = "texte-aws-confidentiel") -> ClientError:
@@ -218,3 +230,55 @@ def test_bedrock_client_is_created_lazily_and_region_errors_are_safe(
     monkeypatch.setattr(boto3, "client", no_region)
     with pytest.raises(EmbedderError):
         BedrockEmbedder(TITAN).embed(["x"], "document")
+
+
+# --- bedrock : Cohere Embed Multilingual v3 -----------------------------------------------
+
+
+def test_cohere_sends_one_batched_request_with_the_input_type() -> None:
+    client = FakeBedrock()
+    embedder = BedrockEmbedder(COHERE, client)
+    assert embedder.name == f"bedrock:{COHERE}"
+    vectors = embedder.embed(["a", "b", "c"], "query")
+    assert len(vectors) == 3 and len(vectors[0]) == DIMENSIONS
+    assert len(client.calls) == 1
+    request = json.loads(client.calls[0]["body"])
+    assert request["texts"] == ["a", "b", "c"]
+    assert request["input_type"] == "search_query"
+    assert request["truncate"] == "END"
+    assert client.calls[0]["modelId"] == COHERE
+
+
+def test_cohere_documents_use_search_document() -> None:
+    client = FakeBedrock()
+    BedrockEmbedder(COHERE, client).embed(["a"], "document")
+    assert json.loads(client.calls[0]["body"])["input_type"] == "search_document"
+
+
+def test_cohere_splits_large_batches() -> None:
+    client = FakeBedrock()
+    texts = [f"t{n}" for n in range(COHERE_MAX_TEXTS + 5)]
+    vectors = BedrockEmbedder(COHERE, client).embed(texts, "document")
+    assert len(vectors) == len(texts)
+    assert [len(json.loads(c["body"])["texts"]) for c in client.calls] == [COHERE_MAX_TEXTS, 5]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [b'{"embeddings": [[1.0]]}', b'{"embeddings": "abc"}', b'{"embeddings": [["x"]]}', b"{}"],
+)
+def test_cohere_malformed_or_miscounted_response_is_refused(payload: bytes) -> None:
+    class Bad:
+        def invoke_model(self, **_kwargs: Any) -> Any:
+            return {"body": io.BytesIO(payload)}
+
+    with pytest.raises(EmbedderError):
+        BedrockEmbedder(COHERE, Bad()).embed(["a", "b"], "document")
+
+
+def test_cohere_errors_expose_only_the_aws_error_code() -> None:
+    embedder = BedrockEmbedder(COHERE, Failing(client_error("ThrottlingException")))
+    with pytest.raises(EmbedderError) as exc:
+        embedder.embed(["texte-offre"], "document")
+    assert "ThrottlingException" in str(exc.value)
+    assert "texte-offre" not in str(exc.value)

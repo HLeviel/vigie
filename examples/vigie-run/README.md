@@ -155,8 +155,10 @@ doivent être activés dans Bedrock) :
 }
 ```
 
-Le modèle est celui de `match.embeddings.model` ; seul le format Amazon Titan Text Embeddings V2
-(`amazon.titan-embed-text-v2:0`) est pris en charge pour l'instant. Un profil d'inférence
+Le modèle est celui de `match.embeddings.model` ; seuls Amazon Titan Text Embeddings V2
+(`amazon.titan-embed-text-v2…`) et Cohere Embed Multilingual v3 (`cohere.embed-multilingual-v3…`)
+sont pris en charge pour l'instant. Les modèles de fournisseurs tiers (Cohere) doivent en plus être
+activés dans la console Bedrock (non vérifié ici). Un profil d'inférence
 interrégional demanderait d'autres ARN : non couvert ici.
 
 ```bash
