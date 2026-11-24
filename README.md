@@ -44,14 +44,16 @@ La collecte, le dédoublonnage et les filtres appartiennent à `radar`. Les troi
 
 ## Modules
 
+Spécification détaillée du module `radar` : [`docs/specs/radar.md`](docs/specs/radar.md).
+
 | Module | Rôle | Statut |
 |---|---|---|
-| `radar` | Veille quotidienne des offres, sans LLM | En cours (collecte Adzuna et ATS, alertes email (France Travail vérifié ; APEC, WTTJ et LinkedIn non), stockage, dédoublonnage, filtres, digest en fichier, envoi par email, état sur S3 et workflow planifié écrits mais jamais exécutés pour de vrai) |
+| `radar` | Veille quotidienne des offres, sans LLM | Lots M1 et M2 implémentés ; exécution réelle vérifiée le 24/11/2026 (dépôt privé `vigie-run`, digest reçu, état S3 relu à l'exécution suivante). Alertes email : France Travail vérifié, APEC, WTTJ et LinkedIn non (#16). API France Travail : en attente d'accès (#19) |
 | `match` | Score offre/CV en 3 étages, évaluation precision@k | Prévu |
 | `cv` | CV et lettre adaptés, packagés en Agent Skill | Prévu |
 | `agent` | Agent LangChain, validation humaine avant action | Prévu |
 
-Aucun module n'est encore fonctionnel : `radar` n'a pour l'instant que son squelette, ses modèles de données, ses fonctions de normalisation et une source Adzuna vérifiée sur appels réels, des sources ATS (Greenhouse, Lever, Ashby, SmartRecruiters, Recruitee) vérifiées sur les API publiques, la lecture IMAP des alertes email (parseur France Travail vérifié sur de vrais emails ; APEC, WTTJ et LinkedIn non vérifiés faute d'exemples), une source France Travail non vérifiée (API suspendue), le stockage SQLite, le dédoublonnage, les filtres, le digest en fichier HTML ou Markdown, son envoi par email, la synchronisation de l'état sur S3, un modèle de dépôt privé d'exécution avec workflow planifié et publication de versions taguées (jamais exécutés pour de vrai : pas d'accès AWS ni SMTP pendant le développement) et la CLI (`run`, `check`, `stats`, `digest`). Ce tableau sera mis à jour à chaque avancée réelle.
+Seul `radar` est implémenté ; `match`, `cv` et `agent` sont prévus. Le détail de ce qui est vérifié ou non est dans la [spécification](docs/specs/radar.md) et dans les issues étiquetées `à-vérifier`.
 
 ## Démarrage rapide
 
@@ -101,7 +103,7 @@ Codes de sortie de `run` : `0` succès, `1` erreur de configuration ou de secret
 
 - **APIs officielles plutôt que scraping.** Stables, autorisées, sans risque de blocage ni de non-conformité aux conditions d'utilisation. JobSpy n'est qu'une option, désactivée par défaut.
 - **Pas de LLM à la collecte.** La collecte est déterministe, peu coûteuse et reproductible. Le LLM n'intervient qu'en fin de chaîne, sur un petit nombre d'offres.
-- **État stocké hors du cache GitHub Actions.** Le cache peut être évincé ; l'historique des offres vues ne doit pas l'être. L'état vit dans un stockage durable (DynamoDB à terme).
+- **État stocké hors du cache GitHub Actions.** Le cache peut être évincé ; l'historique des offres vues ne doit pas l'être. L'état vit dans un bucket S3 privé (base SQLite, écriture conditionnelle).
 - **Annonces traitées comme entrée potentiellement malveillante.** Le texte d'une offre est une donnée non fiable : il est nettoyé et délimité avant d'atteindre le LLM, pour limiter les injections de prompt.
 - **Garde-fou sur le CV.** Aucune ligne générée sans source dans le CV de référence.
 

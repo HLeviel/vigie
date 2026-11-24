@@ -3,7 +3,7 @@
 ATTENTION : écrite sans accès à l'API ni à sa documentation officielle (accès suspendu).
 Le mapping, les codes de contrat, les formats de dates et le comportement de pagination
 viennent de la connaissance du schéma et n'ont PAS été vérifiés sur une réponse réelle.
-Voir ``docs/decisions.md`` : tout ce qui est marqué « non vérifié » est à confirmer.
+Voir ``docs/specs/radar.md`` et l'issue #19 : tout ce qui est « non vérifié » est à confirmer.
 """
 
 import logging

@@ -1,9 +1,8 @@
 """Extraction d'offres depuis le HTML d'un email d'alerte.
 
-ATTENTION : heuristique générique, écrite **sans exemple réel** d'alerte (voir
-``docs/decisions.md``). Elle cherche les liens d'offres propres à chaque expéditeur et lit le texte
-voisin ; l'ordre « entreprise, puis lieu » et les motifs de liens sont des hypothèses à ajuster sur
-de vrais emails.
+France Travail : parseur vérifié sur de vrais emails. APEC, WTTJ et LinkedIn : heuristique
+générique écrite sans exemple réel (motifs de liens supposés, issue #16). Voir
+``docs/specs/radar.md``.
 
 Le contenu d'un email est une entrée non fiable : on n'ouvre **jamais** un lien, on ne charge aucune
 image, et le texte caché (``display:none``, taille 0…) est supprimé, car c'est un vecteur courant

@@ -3,7 +3,7 @@
 La forme des réponses a été vérifiée sur la documentation officielle et sur une vraie réponse
 (recherche ``what`` + ``where=Lyon``). Restent non vérifiés : ``where`` avec un nom de
 département, ``distance``, ``max_days_old`` et les valeurs de ``contract_type`` autres que
-``permanent`` : voir ``docs/decisions.md``.
+``permanent`` : voir ``docs/specs/radar.md`` (issue #20 pour la pagination).
 """
 
 import logging
