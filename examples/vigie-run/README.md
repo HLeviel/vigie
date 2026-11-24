@@ -51,7 +51,11 @@ aws iam create-open-id-connect-provider \
   --url https://token.actions.githubusercontent.com --client-id-list sts.amazonaws.com
 ```
 
-Politique de confiance du rôle (`trust.json`), **restreinte à `vigie-run` et à son environnement `radar`** :
+Politique de confiance du rôle (`trust.json`), **restreinte à `vigie-run` et à son environnement `radar`**.
+GitHub met désormais les **identifiants numériques** du propriétaire et du dépôt dans le `sub` du jeton
+(`repo:<propriétaire>@<id>/<dépôt>@<id>:environment:radar`) : la politique les exige, ce qui la rend aussi
+insensible à un dépôt renommé ou recréé sous le même nom. Remplace `<OWNER_ID>` et `<REPO_ID>` par les
+valeurs de ton compte et de ton dépôt (voir l'encadré « Trouver le `sub` réel » plus bas) :
 
 ```json
 {
@@ -63,7 +67,7 @@ Politique de confiance du rôle (`trust.json`), **restreinte à `vigie-run` et �
     "Condition": {
       "StringEquals": {
         "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-        "token.actions.githubusercontent.com:sub": "repo:HLeviel/vigie-run:environment:radar"
+        "token.actions.githubusercontent.com:sub": "repo:HLeviel@<OWNER_ID>/vigie-run@<REPO_ID>:environment:radar"
       }
     }
   }]
@@ -72,6 +76,30 @@ Politique de confiance du rôle (`trust.json`), **restreinte à `vigie-run` et �
 
 Un job qui utilise un environnement reçoit un `sub` fondé sur l'environnement, pas sur la branche : la
 restriction à `main` se fait donc **dans GitHub** (étape 4), sur l'environnement `radar`.
+
+**Trouver le `sub` réel.** En cas d'erreur `Not authorized to perform sts:AssumeRoleWithWebIdentity`,
+ajoute temporairement cette étape avant `configure-aws-credentials` (elle n'affiche que des
+revendications, jamais le jeton) et compare le `sub` à `trust.json`, caractère par caractère :
+
+```yaml
+      - name: Debug OIDC (temporaire)
+        run: |
+          curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" \
+          | python3 -c "
+          import sys, json, base64
+          p = json.load(sys.stdin)['value'].split('.')[1]
+          p += '=' * (-len(p) % 4)
+          c = json.loads(base64.urlsafe_b64decode(p))
+          print(json.dumps({k: c.get(k) for k in ('sub', 'aud', 'repository', 'environment', 'ref')}, indent=1))
+          "
+```
+
+Les identifiants numériques s'y trouvent (ex. `repo:HLeviel@13158585/vigie-run@1469974815:environment:radar`).
+Dans les logs, GitHub remplace par `***` toute chaîne égale à la valeur d'un secret (le nom du dépôt
+peut donc apparaître masqué si un secret porte le même nom) : c'est sans danger. Pour un dépôt plus
+ancien dont le `sub` n'a pas d'identifiants (`repo:HLeviel/vigie-run:environment:radar`), utilise ce
+format-là. Retire l'étape de debug une fois le rôle fonctionnel.
 
 Politique de permissions (`state-access.json`), limitée à l'objet d'état :
 
