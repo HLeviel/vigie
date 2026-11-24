@@ -1,7 +1,7 @@
 """Extraction d'offres depuis le HTML d'un email d'alerte.
 
 ATTENTION : heuristique générique, écrite **sans exemple réel** d'alerte (voir
-``docs/decisions.md``). Elle cherche les liens d'offres propres à chaque expéditeur et lit le texte
+``docs/specs/radar.md``, issue #16 pour APEC, WTTJ et LinkedIn). Elle cherche les liens d'offres propres à chaque expéditeur et lit le texte
 voisin ; l'ordre « entreprise, puis lieu » et les motifs de liens sont des hypothèses à ajuster sur
 de vrais emails.
 

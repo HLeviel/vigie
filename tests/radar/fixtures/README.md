@@ -1,6 +1,6 @@
 # Fixtures
 
-`france_travail_search.json` est une réponse **reconstruite** d'après la connaissance du schéma de l'API Offres d'emploi v2. Elle **n'a pas été enregistrée** depuis l'API (l'accès est suspendu), et toutes les valeurs (entreprises, contacts) sont fictives. À remplacer par une réponse réelle anonymisée dès que l'API est de nouveau accessible (voir `docs/decisions.md`).
+`france_travail_search.json` est une réponse **reconstruite** d'après la connaissance du schéma de l'API Offres d'emploi v2. Elle **n'a pas été enregistrée** depuis l'API (l'accès est suspendu), et toutes les valeurs (entreprises, contacts) sont fictives. À remplacer par une réponse réelle anonymisée dès que l'API est de nouveau accessible (voir `docs/specs/radar.md` et l'issue #19).
 
 `adzuna_search.json` est une **vraie réponse** de l'API Adzuna (recherche « ingénieur ia » à Lyon, 10 résultats), **anonymisée** : noms d'entreprises remplacés (« Société A »…), identifiants d'offres remplacés, champs `adref` supprimés, `utm_source` neutralisé (ils identifient l'application), descriptions remplacées par un texte fictif de même forme (extrait terminé par « … »). Les titres, lieux, salaires, dates, catégories et la structure sont ceux de la réponse réelle.
 
