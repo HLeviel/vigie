@@ -21,11 +21,13 @@ class Embedder(Protocol):
 
 EmbedderFactory = Callable[[str], Embedder]
 
-# provider -> fabrique(modèle). Un fournisseur s'inscrit ici (``local`` et ``bedrock`` : étape 4).
+# provider -> fabrique(modèle). Les fournisseurs s'inscrivent dans ``embedders/__init__.py``.
 REGISTRY: dict[str, EmbedderFactory] = {}
 
 
 def build_embedder(provider: str, model: str) -> Embedder:
+    import vigie.match.embedders  # noqa: F401  (inscrit les fournisseurs)
+
     try:
         factory = REGISTRY[provider]
     except KeyError:

@@ -18,6 +18,10 @@ dependencies = [
     "tzdata>=2026.6",
 ]
 
+[project.optional-dependencies]
+# Fournisseur d'embeddings « local » du module match (CPU) : volumineux, donc facultatif.
+local = ["sentence-transformers>=3.0"]
+
 [project.scripts]
 vigie = "vigie.radar.cli:root"
 

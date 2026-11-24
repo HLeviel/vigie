@@ -83,8 +83,17 @@ EMB = "  embeddings: { provider: local, model: modele-fictif }\n"
 
 
 def clear_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    import importlib.util
+
     monkeypatch.chdir(tmp_path)  # pas de .env du développeur
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    # la bibliothèque (extra « local ») n'est pas installée en CI : on la déclare présente
+    real = importlib.util.find_spec
+    monkeypatch.setattr(
+        importlib.util,
+        "find_spec",
+        lambda name, *a: object() if name == "sentence_transformers" else real(name, *a),
+    )
 
 
 def test_check_ok_prints_counters_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -174,3 +183,33 @@ def test_match_makes_no_network_call(tmp_path: Path, monkeypatch: pytest.MonkeyP
     clear_env(monkeypatch, tmp_path)
     cfg = write_setup(tmp_path, "  enabled: true\n" + EMB)
     assert runner.invoke(root, ["match", "check", "--config", str(cfg)]).exit_code == 0
+
+
+def test_check_local_provider_needs_the_extra(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import importlib.util
+
+    clear_env(monkeypatch, tmp_path)
+    cfg = write_setup(tmp_path, "  enabled: true\n" + EMB)
+    real = importlib.util.find_spec
+    monkeypatch.setattr(
+        importlib.util,
+        "find_spec",
+        lambda name, *a: None if name == "sentence_transformers" else real(name, *a),
+    )
+    missing = runner.invoke(root, ["match", "check", "--config", str(cfg)])
+    assert missing.exit_code == 1 and "extra" in missing.output
+
+    monkeypatch.setattr(importlib.util, "find_spec", lambda name, *a: object())
+    ok = runner.invoke(root, ["match", "check", "--config", str(cfg)])
+    assert ok.exit_code == 0 and "sentence-transformers installé" in ok.output
+
+
+def test_check_bedrock_provider_needs_no_secret(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clear_env(monkeypatch, tmp_path)
+    cfg = write_setup(tmp_path, "  enabled: true\n  embeddings: { provider: bedrock, model: m }\n")
+    result = runner.invoke(root, ["match", "check", "--config", str(cfg)])
+    assert result.exit_code == 0 and "bedrock" in result.output

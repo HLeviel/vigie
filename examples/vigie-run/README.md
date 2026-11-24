@@ -135,6 +135,37 @@ aws iam put-role-policy --role-name vigie-radar --policy-name state-access \
   --policy-document file://state-access.json
 ```
 
+### Module `match` : permission Bedrock (seulement si `embeddings.provider: bedrock`)
+
+Un deuxième document donne `bedrock:InvokeModel` sur les **seuls** modèles utilisés, jamais `*`
+(`bedrock-access.json`, à attacher au même rôle avec `put-role-policy`). L'ARN d'un modèle de
+fondation a la forme ci-dessous (forme standard, non vérifiée sur ton compte : région et modèle
+doivent être activés dans Bedrock) :
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "bedrock:InvokeModel",
+      "Resource": "arn:aws:bedrock:<REGION>::foundation-model/<ID_DU_MODELE>"
+    }
+  ]
+}
+```
+
+Le modèle est celui de `match.embeddings.model` ; seuls Amazon Titan Text Embeddings V2
+(`amazon.titan-embed-text-v2…`) et Cohere Embed Multilingual v3 (`cohere.embed-multilingual-v3…`)
+sont pris en charge pour l'instant. Les modèles de fournisseurs tiers (Cohere) doivent en plus être
+activés dans la console Bedrock (non vérifié ici). Un profil d'inférence
+interrégional demanderait d'autres ARN : non couvert ici.
+
+```bash
+aws iam put-role-policy --role-name vigie-radar --policy-name bedrock-access \
+  --policy-document file://bedrock-access.json
+```
+
 ## 4. Environnement GitHub « radar » (dans `vigie-run`)
 
 Settings > Environments > New environment : `radar`.

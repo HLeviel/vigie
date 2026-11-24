@@ -4,6 +4,7 @@ Comme pour ``radar``, la sortie n'affiche que des compteurs et des noms de varia
 contenu du profil, ni un secret.
 """
 
+import importlib.util
 from pathlib import Path
 from typing import Annotated
 
@@ -51,6 +52,13 @@ def check(config: ConfigOption = None) -> None:
     )
     typer.echo(f"empreinte du profil : {profile.profile_hash[:12]}")
     typer.echo(f"embeddings : fournisseur {match.embeddings.provider}")
+    if match.embeddings.provider == "local":
+        # sans importer la bibliothèque (lourde) ni charger de modèle : aucun appel réseau
+        if importlib.util.find_spec("sentence_transformers") is None:
+            raise _fail("embeddings local : installer l'extra « local » (uv sync --extra local)")
+        typer.echo("embeddings local : sentence-transformers installé (modèle non vérifié ici)")
+    else:
+        typer.echo("embeddings bedrock : authentification par OIDC (rien à vérifier ici)")
 
     settings = Settings()
     if match.llm.enabled:
