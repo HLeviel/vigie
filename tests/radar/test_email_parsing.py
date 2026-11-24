@@ -15,19 +15,71 @@ def cards(name: str, key: str) -> list:  # type: ignore[type-arg]
     return extract_cards(html_of(name), SPECS[key])
 
 
-def test_france_travail_cards() -> None:
-    first, second = cards("france_travail", "france_travail")
-    assert first.key == "190AAAA"
-    assert first.title == "Data Engineer (H/F)"
-    assert first.company == "Exemple SA"
-    assert first.location == "69 - LYON 03"
-    assert first.description == "Pipelines Python et SQL."
-    # paramètres de suivi retirés du lien conservé
-    assert first.url == "https://candidat.francetravail.fr/offres/recherche/detail/190AAAA"
-    assert (second.key, second.title, second.location) == (
-        "190BBBB",
-        "Développeur IA",
-        "75 - PARIS 08",
+def test_france_travail_real_template_cards() -> None:
+    """Gabarit vérifié sur de vrais emails (10 offres par email, avec ou sans entreprise)."""
+    found = {c.key: c for c in cards("france_travail", "france_travail")}
+    assert list(found) == [
+        "900AAA1", "900AAA2", "900AAA3", "900AAA4", "900AAA5",
+        "900AAA6", "900AAA7", "900AAA8", "900AAA9", "9053104",
+    ]  # fmt: skip
+    first = found["900AAA1"]
+    # le titre ne contient ni l'entreprise, ni le lieu, ni le commentaire HTML « Lieu offre »
+    assert first.title == "Technicien support industriel (F/H) - CDI H/F"
+    assert first.company == "SOCIETE EXEMPLE ALPHA"  # « SOCIETE EXEMPLE ALPHA - » sans le tiret
+    assert first.location == "38 - Corps"
+    # « CDI » est aussi un morceau du titre : la ligne de contrat doit quand même être trouvée
+    assert first.contract == "CDI"
+    assert first.description.splitlines()[:2] == [
+        "Vos missions",
+        "- Assurer le support technique des équipements (postes, réseaux, automates)",
+    ]
+    # ni « Offre n°… », ni le temps de travail, ni la mention du partenaire
+    assert all(
+        "Offre n°" not in c.description and "Temps plein" not in c.description
+        for c in found.values()
+    )
+    assert "confiée à France Travail" not in first.description
+    # paramètres de suivi `at_*` retirés
+    assert first.url == "https://candidat.francetravail.fr/offres/recherche/detail/900AAA1"
+
+
+def test_france_travail_variants() -> None:
+    found = {c.key: c for c in cards("france_travail", "france_travail")}
+    assert found["900AAA7"].company is None  # offre sans entreprise : un seul <span>
+    assert found["900AAA7"].location == "2B - BIGUGLIA"
+    assert found["900AAA9"].location == "35 - Ille-et-Vilaine"  # département seul
+    assert found["900AAA8"].contract == "Intérim"
+    assert found["900AAA5"].contract == "CDD"
+    assert found["9053104"].key == "9053104"  # identifiant numérique
+    assert "Salaire : 1 802,00€ à 2 600,00€ par mois" in found["900AAA9"].description
+    assert found["900AAA4"].description.startswith("Missions :\nVous interviendrez")
+
+
+def test_france_travail_non_offer_links_are_ignored() -> None:
+    urls = [c.url for c in cards("france_travail", "france_travail")]
+    assert len(urls) == 10
+    assert all("/offres/recherche/detail/" in u for u in urls)  # ni appli, ni « gérer mes alertes »
+
+
+def test_france_travail_single_offer_email() -> None:
+    [card] = cards("france_travail_single", "france_travail")
+    assert card.key == "9000001"
+    assert card.company == "SOCIETE EXEMPLE DELTA"
+    assert card.contract == "CDI"
+    assert card.description.startswith("POSTE : Commercial(e) solutions B2B H/F")
+
+
+def test_france_travail_markup_change_falls_back_on_the_generic_reader() -> None:
+    html = (
+        '<div><a href="https://candidat.francetravail.fr/offres/recherche/detail/ABC123">'
+        "Poste X</a><p>Société Y</p><p>69 - Lyon</p></div>"
+    )
+    [card] = extract_cards(html, SPECS["france_travail"])
+    assert (card.key, card.title, card.company, card.location) == (
+        "ABC123",
+        "Poste X",
+        "Société Y",
+        "69 - Lyon",
     )
 
 

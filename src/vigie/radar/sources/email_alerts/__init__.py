@@ -17,7 +17,7 @@ from pydantic import ValidationError
 
 from vigie.radar.config import EmailAlertsConfig
 from vigie.radar.models import ContractType, Offer, SearchQuery
-from vigie.radar.normalize import contract_from_title, parse_location
+from vigie.radar.normalize import contract_from_title, parse_contract_type, parse_location
 from vigie.radar.sources.email_alerts import apec, france_travail, linkedin, wttj
 from vigie.radar.sources.email_alerts.mailbox import ImapMailbox, Mailbox, RawMessage
 from vigie.radar.sources.email_alerts.parsing import SenderSpec, extract_cards
@@ -98,6 +98,15 @@ class EmailAlertsSource:
             return True  # expéditeur hors liste blanche : ignoré, corps jamais lu
         return self._store is not None and self._store.email_processed(message_id)
 
+    @staticmethod
+    def _contract(label: str | None, title: str) -> ContractType:
+        """Libellé de contrat de l'email d'abord, sinon un type explicite dans le titre."""
+        if label:
+            parsed = ContractType(parse_contract_type(label))
+            if parsed is not ContractType.AUTRE:
+                return parsed
+        return ContractType(contract_from_title(title) or "AUTRE")
+
     def _offers_from(self, message: RawMessage, sender_key: str) -> list[Offer]:
         spec = SPECS.get(sender_key)
         if spec is None:
@@ -115,7 +124,7 @@ class EmailAlertsSource:
                     location_label=label,
                     postal_code=postal,
                     department=department,
-                    contract_type=ContractType(contract_from_title(card.title) or "AUTRE"),
+                    contract_type=self._contract(card.contract, card.title),
                     description=card.description,
                     url=card.url,
                     published_at=message.date,

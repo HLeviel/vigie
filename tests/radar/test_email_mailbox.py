@@ -110,7 +110,7 @@ def test_connection_is_read_only_and_never_writes() -> None:
     assert server.logged_out
     assert server.port == 993
     assert [m.message_id for m in messages] == [
-        "<ft-1@example.org>",
+        "<msg.0000000000001.vertxmail.00000001@fixture.example>",
         "<promo-1@example.org>",
         "<li-1@example.org>",
     ]
@@ -123,7 +123,7 @@ def test_search_uses_an_imap_date() -> None:
 
 
 def test_skipped_messages_never_have_their_body_downloaded() -> None:
-    read(skip=lambda mid, sender: not sender.endswith("@francetravail.fr"))
+    read(skip=lambda mid, sender: "francetravail.fr" not in sender)
     fetches = [c for c in FakeImap.instances[0].calls if c[0] == "uid:FETCH"]
     bodies = [c for c in fetches if "PEEK[]" in c[1][1]]
     assert [c[1][0] for c in bodies] == ["1"]  # un seul corps téléchargé
@@ -133,8 +133,8 @@ def test_skipped_messages_never_have_their_body_downloaded() -> None:
 
 def test_message_content_matches_the_source() -> None:
     [message] = read(skip=lambda mid, sender: "francetravail" not in sender)
-    assert message.from_address == "alerte@francetravail.fr"
-    assert message.date == datetime(2026, 11, 19, 7, 30, tzinfo=UTC)
+    assert message.from_address == "nepasrepondre@offre.francetravail.fr"
+    assert message.date == datetime(2026, 11, 24, 1, 8, 53, tzinfo=UTC)
     assert message.raw == load_raw("france_travail")
 
 
