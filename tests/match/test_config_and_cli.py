@@ -45,7 +45,9 @@ def test_model_is_mandatory() -> None:
         "match: { embeddings: { provider: autre, model: m } }",
         "match: { embeddings: { provider: local, model: '' } }",
         "match: { embeddings: { provider: local, model: m }, weights: { semantic: -1 } }",
-        "match: { embeddings: { provider: local, model: m }, weights: { lexical: 0, semantic: 0 } }",
+        "match: { embeddings: { provider: local, model: m }, weights: { lexical: 0 } }".replace(
+            "lexical: 0 }", "lexical: 0, semantic: 0 }"
+        ),
         "match: { embeddings: { provider: local, model: m }, top_k_profile: 0 }",
         "match: { embeddings: { provider: local, model: m }, penalties: { remote: 101 } }",
         "match: { embeddings: { provider: local, model: m }, digest: { min_score: 120 } }",
