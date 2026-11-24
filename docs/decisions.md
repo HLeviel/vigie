@@ -244,3 +244,10 @@ Décisions d'implémentation de `radar` que `spec_radar.md` ne tranche pas. Une 
 | Date | Décision | Raison | À confirmer à |
 |---|---|---|---|
 | 24/11/2026 | La politique de confiance du rôle exige le `sub` **avec identifiants numériques** (`repo:HLeviel@<OWNER_ID>/vigie-run@<REPO_ID>:environment:radar`) ; le README du modèle explique comment lire le `sub` réel (étape de debug temporaire qui n'affiche que des revendications) et mentionne l'ancien format pour un dépôt plus ancien. Cela remplace le `sub` sans identifiants de la décision du 24/11 | Premier lancement réel : `Not authorized to perform sts:AssumeRoleWithWebIdentity` ; le jeton portait `repo:HLeviel@13158585/…@1469974815:environment:radar` | Le README de `vigie-run` reprendra ce correctif à la prochaine version taguée |
+
+## Correctif : raisons d'échec lisibles
+
+| Date | Décision | Raison | À confirmer à |
+|---|---|---|---|
+| 24/11/2026 | La console de `run` et de `stats` affiche, après « ÉCHEC », le type d'exception et, **seulement pour `MailboxError`, `NotifyError`, `StateSyncError` et `MissingSettingsError`**, leur message (fixe, sans hôte, identifiant, adresse ni critère). Pour toute autre exception (dont `SourceHttpError`, dont le message contient l'URL et donc les critères de recherche), seul le type est affiché | Premier lancement réel : « ÉCHEC » sans raison rendait l'échec IMAP et l'échec d'envoi impossibles à diagnostiquer, alors que ces messages sont fixes | Premier lancement |
+| 24/11/2026 | `NotifyError` nomme l'étape SMTP en cause (connexion, négociation TLS, authentification, envoi) ; le texte du serveur n'est jamais repris | Distinguer un mot de passe d'application refusé d'un port ou d'un hôte erroné | Premier lancement |

@@ -83,6 +83,7 @@ class SmtpSender:
         message = build_message(digest, sender, recipients)
         context = ssl.create_default_context()
         connection: Any = None
+        stage = "connexion au serveur SMTP"
         try:
             if s.smtp_port == SSL_PORT:
                 connection = self._ssl_factory(
@@ -90,13 +91,16 @@ class SmtpSender:
                 )
             else:
                 connection = self._smtp_factory(s.smtp_host, s.smtp_port, timeout=TIMEOUT)
+                stage = "négociation TLS (STARTTLS)"
                 connection.starttls(context=context)  # sans TLS, on n'envoie jamais le mot de passe
+            stage = "authentification SMTP (identifiant ou mot de passe d'application refusé ?)"
             connection.login(user, s.smtp_password.get_secret_value())
+            stage = "envoi du message (expéditeur ou destinataire refusé ?)"
             connection.send_message(message)
         except (smtplib.SMTPException, OSError, ssl.SSLError):
-            raise NotifyError(
-                "envoi du digest impossible (connexion, TLS, authentification ou envoi)"
-            ) from None
+            # L'étape en cause suffit à corriger la configuration ; le texte du serveur, lui, peut
+            # contenir l'hôte, l'identifiant ou une adresse : il n'est jamais repris.
+            raise NotifyError(f"envoi du digest impossible : échec à l'étape « {stage} »") from None
         finally:
             if connection is not None:
                 try:

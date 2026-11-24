@@ -203,8 +203,8 @@ def run(
                 else:
                     try:
                         _sender(settings).send(digest)
-                    except NotifyError:
-                        delivery = "failed"
+                    except NotifyError as exc:
+                        delivery = f"failed:{exc}"
                     else:
                         store.mark_notified([item.uid for item in digest.items], now)
                         delivery = f"sent:{len(digest.items)}/{digest.total}"
@@ -223,7 +223,7 @@ def run(
             scratch.cleanup()
 
     for report in result.report.sources:
-        flag = " ÉCHEC" if report.error_message else ""
+        flag = " ÉCHEC" + failure_reason(report.error_message) if report.error_message else ""
         typer.echo(
             f"{report.source} : récupérées={report.fetched} nouvelles={report.new} "
             f"filtrées={report.filtered} doublons={report.duplicates} "
@@ -234,11 +234,28 @@ def run(
     if dry_run:
         typer.echo("dry-run : rien n'a été écrit, aucun email envoyé")
     code = result.exit_code
-    if delivery == "failed":
+    if delivery.startswith("failed"):
         code = EXIT_DELIVERY
     if state_failed:
         code = EXIT_STATE
     raise typer.Exit(code)
+
+
+# Exceptions au message fixe, sans donnée sensible (ni critère, ni hôte, ni identifiant) : seul leur
+# message peut être affiché. Pour toute autre exception, on n'affiche que son type.
+SAFE_ERROR_TYPES = frozenset(
+    {"MailboxError", "NotifyError", "StateSyncError", "MissingSettingsError"}
+)
+
+
+def failure_reason(error_message: str | None) -> str:
+    """Raison affichable d'un échec : type d'exception, plus le message s'il est sûr."""
+    if not error_message:
+        return ""
+    kind, _, detail = error_message.partition(": ")
+    if kind in SAFE_ERROR_TYPES and detail:
+        return f" ({kind} : {detail})"
+    return f" ({kind})"
 
 
 def _describe_delivery(delivery: str, dry_run: bool, send_email: bool, not_configured: bool) -> str:
@@ -248,8 +265,10 @@ def _describe_delivery(delivery: str, dry_run: bool, send_email: bool, not_confi
         return "digest : envoi désactivé (--no-email)"
     if not_configured:
         return "digest : envoi non configuré (variables SMTP absentes)"
-    if delivery == "failed":
-        return "digest : échec de l'envoi, les offres restent à notifier"
+    if delivery.startswith("failed"):
+        reason = delivery.partition(":")[2]
+        suffix = f" ({reason})" if reason else ""
+        return f"digest : échec de l'envoi{suffix}, les offres restent à notifier"
     if delivery == "nothing":
         return "digest : aucune nouvelle offre et aucune source en échec, rien à envoyer"
     shown, _, total = delivery.removeprefix("sent:").partition("/")
@@ -275,7 +294,7 @@ def stats(
     for run_info in runs:
         typer.echo(f"{run_info['started_at']} : {run_info['status']}")
         for src in run_info["sources"]:
-            flag = " ÉCHEC" if src["error_message"] else ""
+            flag = " ÉCHEC" + failure_reason(src["error_message"]) if src["error_message"] else ""
             typer.echo(
                 f"  {src['source']} : récupérées={src['fetched']} nouvelles={src['new']} "
                 f"filtrées={src['filtered']} doublons={src['duplicates']} "

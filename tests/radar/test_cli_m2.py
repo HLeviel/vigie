@@ -135,7 +135,8 @@ def test_send_failure_exits_4_and_offers_stay_pending_for_next_run(
     env.sender.fail = True
     failed = env.run()
     assert failed.exit_code == 4
-    assert "échec de l'envoi, les offres restent à notifier" in failed.output
+    assert "échec de l'envoi" in failed.output
+    assert "les offres restent à notifier" in failed.output
     assert "offres à notifier : 3" in failed.output
     env.sender.fail = False
     retry = env.run()
@@ -376,3 +377,70 @@ def test_check_rejects_a_partially_configured_smtp(
     assert result.exit_code == 1
     assert "SMTP_PASSWORD" in result.output
     assert "smtp.example.org" not in result.output
+
+
+# --- raisons d'échec lisibles, sans donnée sensible ------------------------------------------------
+
+
+def test_failed_source_shows_the_reason_of_safe_exceptions(
+    env: Env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from vigie.radar.sources.email_alerts.mailbox import MailboxError
+
+    env.use_source(
+        monkeypatch,
+        FakeSource("adzuna", [], error=MailboxError("authentification IMAP refusée")),
+    )
+    result = env.run()
+    assert "ÉCHEC (MailboxError : authentification IMAP refusée)" in result.output
+
+
+def test_failed_source_hides_the_message_of_other_exceptions(
+    env: Env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    secret_url = "adzuna : HTTP 500 sur https://api.example.org/?what=critere-confidentiel"
+    env.use_source(monkeypatch, FakeSource("adzuna", [], error=SourceHttpError(secret_url, 500)))
+    result = env.run()
+    assert "ÉCHEC (SourceHttpError)" in result.output
+    assert "critere-confidentiel" not in result.output
+    assert "HTTP 500" not in result.output
+
+
+def test_delivery_failure_shows_the_failing_stage(
+    env: Env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env.use_source(monkeypatch, FakeSource("adzuna", offers(1)))
+    env.sender.fail = True
+    result = env.run()
+    assert "digest : échec de l'envoi (envoi du digest impossible)" in result.output
+
+
+def test_stats_shows_the_reason_too(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
+    from vigie.radar.sources.email_alerts.mailbox import MailboxError
+
+    env.use_source(
+        monkeypatch, FakeSource("adzuna", [], error=MailboxError("dossier IMAP introuvable"))
+    )
+    env.run()
+    result = runner.invoke(cli.root, ["radar", "stats", "--db", str(env.db)])
+    assert "ÉCHEC (MailboxError : dossier IMAP introuvable)" in result.output
+
+
+@pytest.mark.parametrize(
+    ("message", "expected"),
+    [
+        (None, ""),
+        ("", ""),
+        (
+            "MailboxError: connexion IMAP impossible",
+            " (MailboxError : connexion IMAP impossible)",
+        ),
+        ("NotifyError: x", " (NotifyError : x)"),
+        ("StateSyncError: y", " (StateSyncError : y)"),
+        ("RuntimeError: contient un secret", " (RuntimeError)"),
+        ("SourceHttpError: https://x?app_key=***", " (SourceHttpError)"),
+        ("SansDeuxPoints", " (SansDeuxPoints)"),
+    ],
+)
+def test_failure_reason(message: str | None, expected: str) -> None:
+    assert cli.failure_reason(message) == expected
