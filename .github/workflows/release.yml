@@ -28,8 +28,15 @@ jobs:
         run: python3 scripts/check_release_tag.py "$TAG"
         env:
           TAG: ${{ github.ref_name }}
-      - name: Créer la release avec le journal des changements
-        run: gh release create "$TAG" --title "$TAG" --generate-notes --verify-tag
+      # Une release déjà publiée à la main pour ce tag n'est pas une erreur : on ne la recrée pas.
+      # Toute autre erreur de `gh release create` fait échouer l'étape.
+      - name: Créer la release avec le journal des changements (si elle n'existe pas déjà)
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "La release $TAG existe déjà : rien à créer."
+          else
+            gh release create "$TAG" --title "$TAG" --generate-notes --verify-tag
+          fi
         env:
           TAG: ${{ github.ref_name }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
