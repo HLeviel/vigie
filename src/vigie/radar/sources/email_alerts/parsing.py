@@ -36,17 +36,36 @@ _GENERIC_TEXT = re.compile(
     r"en savoir plus|plus d'infos|more)\b",
     re.IGNORECASE,
 )
-MAX_CLIMB = 4
+MAX_CLIMB = 6
 MAX_CARD_LINES = 40
 MAX_CARD_CHARS = 2000
 
 
 @dataclass(frozen=True)
+class Fields:
+    """Champs d'une offre lus par un parseur propre à un expéditeur."""
+
+    title: str
+    company: str | None
+    location: str | None
+    contract: str | None  # libellé brut (« CDI », « Intérim »…)
+    description: str
+
+
+# (lien de l'offre, bloc de l'offre) -> champs, ou ``None`` pour retomber sur l'heuristique
+StructuredParser = Callable[[Tag, Tag], Fields | None]
+
+
+@dataclass(frozen=True)
 class SenderSpec:
-    """Ce qui identifie les offres d'un expéditeur : une expression sur les liens."""
+    """Ce qui identifie les offres d'un expéditeur : une expression sur les liens.
+
+    ``structured`` est un parseur propre au gabarit réel de l'expéditeur, quand on en connaît un.
+    """
 
     key: str
     link_regex: re.Pattern[str]  # groupes nommés facultatifs : ``id``, ``company``
+    structured: StructuredParser | None = None
 
 
 @dataclass(frozen=True)
@@ -57,6 +76,7 @@ class Card:
     company: str | None
     location: str | None
     description: str
+    contract: str | None = None  # libellé brut de contrat, s'il est connu
 
 
 def normalize_link(url: str) -> str:
@@ -65,7 +85,7 @@ def normalize_link(url: str) -> str:
     query = [
         (k, v)
         for k, v in parse_qsl(parts.query, keep_blank_values=True)
-        if k.lower() not in TRACKING_PARAMS and not k.lower().startswith("utm_")
+        if k.lower() not in TRACKING_PARAMS and not k.lower().startswith(("utm_", "at_"))
     ]
     return urlunsplit(
         (parts.scheme.lower(), parts.netloc.lower(), parts.path, urlencode(sorted(query)), "")
@@ -155,6 +175,21 @@ def extract_cards(html: str, spec: SenderSpec) -> list[Card]:
             if _has_other_job(parent, key, key_of):
                 break
             node = parent
+        if spec.structured is not None:
+            fields = spec.structured(first_anchor, node)
+            if fields is not None:
+                cards.append(
+                    Card(
+                        key,
+                        url,
+                        fields.title,
+                        fields.company,
+                        fields.location,
+                        fields.description[:MAX_CARD_CHARS],
+                        fields.contract,
+                    )
+                )
+                continue
         texts = [normalize_spaces(a.get_text(" ")) for a, _, _ in entries]
         if node is first_anchor:
 

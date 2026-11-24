@@ -46,12 +46,12 @@ La collecte, le dédoublonnage et les filtres appartiennent à `radar`. Les troi
 
 | Module | Rôle | Statut |
 |---|---|---|
-| `radar` | Veille quotidienne des offres, sans LLM | En cours (collecte Adzuna et ATS, lecture des alertes email non vérifiée sur de vrais emails, stockage, dédoublonnage, filtres, digest en fichier, envoi par email, état sur S3 et workflow planifié écrits mais jamais exécutés pour de vrai) |
+| `radar` | Veille quotidienne des offres, sans LLM | En cours (collecte Adzuna et ATS, alertes email (France Travail vérifié ; APEC, WTTJ et LinkedIn non), stockage, dédoublonnage, filtres, digest en fichier, envoi par email, état sur S3 et workflow planifié écrits mais jamais exécutés pour de vrai) |
 | `match` | Score offre/CV en 3 étages, évaluation precision@k | Prévu |
 | `cv` | CV et lettre adaptés, packagés en Agent Skill | Prévu |
 | `agent` | Agent LangChain, validation humaine avant action | Prévu |
 
-Aucun module n'est encore fonctionnel : `radar` n'a pour l'instant que son squelette, ses modèles de données, ses fonctions de normalisation et une source Adzuna vérifiée sur appels réels, des sources ATS (Greenhouse, Lever, Ashby, SmartRecruiters, Recruitee) vérifiées sur les API publiques, la lecture IMAP des alertes email (parseurs non vérifiés faute d'exemples réels), une source France Travail non vérifiée (API suspendue), le stockage SQLite, le dédoublonnage, les filtres, le digest en fichier HTML ou Markdown, son envoi par email, la synchronisation de l'état sur S3, un workflow GitHub Actions planifié (jamais exécuté pour de vrai : pas d'accès AWS ni SMTP pendant le développement) et la CLI (`run`, `check`, `stats`, `digest`). Ce tableau sera mis à jour à chaque avancée réelle.
+Aucun module n'est encore fonctionnel : `radar` n'a pour l'instant que son squelette, ses modèles de données, ses fonctions de normalisation et une source Adzuna vérifiée sur appels réels, des sources ATS (Greenhouse, Lever, Ashby, SmartRecruiters, Recruitee) vérifiées sur les API publiques, la lecture IMAP des alertes email (parseur France Travail vérifié sur de vrais emails ; APEC, WTTJ et LinkedIn non vérifiés faute d'exemples), une source France Travail non vérifiée (API suspendue), le stockage SQLite, le dédoublonnage, les filtres, le digest en fichier HTML ou Markdown, son envoi par email, la synchronisation de l'état sur S3, un workflow GitHub Actions planifié (jamais exécuté pour de vrai : pas d'accès AWS ni SMTP pendant le développement) et la CLI (`run`, `check`, `stats`, `digest`). Ce tableau sera mis à jour à chaque avancée réelle.
 
 ## Démarrage rapide
 
