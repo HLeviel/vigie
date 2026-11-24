@@ -1,6 +1,8 @@
 import importlib.util
+import re
 import tomllib
 import zipfile
+from importlib.metadata import PackageNotFoundError
 from pathlib import Path
 from types import ModuleType
 
@@ -60,6 +62,31 @@ def test_package_version_is_consistent_everywhere() -> None:
     assert vigie.__version__ == declared
     # le dépôt est prêt pour un premier tag : le script l'accepterait
     assert load_script("check_release_tag").check(f"v{declared}", ROOT / "pyproject.toml") is None
+
+
+def test_pyproject_is_the_single_source_of_the_version() -> None:
+    declared = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
+    init = (ROOT / "src" / "vigie" / "__init__.py").read_text()
+    assert "importlib.metadata" in init
+    assert not re.search(r'__version__\s*=\s*"\d', init)  # aucune version écrite en dur
+    for path in (ROOT / "src").rglob("*.py"):
+        assert declared not in path.read_text(), f"{path} contient la version en clair"
+
+
+def test_user_agent_uses_the_package_version() -> None:
+    from vigie.radar.http import USER_AGENT
+
+    assert USER_AGENT.startswith(f"vigie-radar/{vigie.__version__} ")
+
+
+def test_version_falls_back_when_the_package_is_not_installed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def missing(name: str) -> str:
+        raise PackageNotFoundError(name)
+
+    monkeypatch.setattr(vigie, "version", missing)
+    assert vigie._read_version() == "0+inconnue"
 
 
 def make_wheel(directory: Path, names: list[str]) -> None:

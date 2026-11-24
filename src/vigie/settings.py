@@ -34,17 +34,17 @@ class Settings(BaseSettings):
         env_file=".env", env_file_encoding="utf-8", extra="ignore", case_sensitive=False
     )
 
-    # France Travail (lot M1)
+    # France Travail (en attente d'accès : source livrée désactivée)
     ft_client_id: SecretStr | None = None
     ft_client_secret: SecretStr | None = None
     # Scope OAuth2 : non secret, à aligner sur la documentation de l'application francetravail.io
     ft_scope: str = "api_offresdemploiv2 o2dsoffre"
 
-    # Adzuna (lot M2)
+    # Adzuna (lot M1)
     adzuna_app_id: SecretStr | None = None
     adzuna_app_key: SecretStr | None = None
 
-    # Lecture des alertes email (lecture seule ; mot de passe d'application)
+    # Lecture des alertes email (lot M1 ; lecture seule, mot de passe d'application)
     imap_host: str | None = None
     imap_user: SecretStr | None = None
     imap_password: SecretStr | None = None
