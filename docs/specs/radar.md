@@ -154,9 +154,11 @@ La description est une **entrée non fiable** : elle sera lue par un LLM dans `m
 ```python
 class Source(Protocol):
     name: str
+
     def fetch(self, query: SearchQuery, since: datetime) -> Iterator[Offer]: ...
 
-class StoreAware(Protocol):      # sources qui ont besoin du stockage (alertes email)
+
+class StoreAware(Protocol):  # sources qui ont besoin du stockage (alertes email)
     def attach_store(self, store: Store) -> None: ...
 ```
 - Registre `REGISTRY` : fabriques `(Settings, RadarConfig) -> Source`. Ajouter une source = un fichier et une entrée.
