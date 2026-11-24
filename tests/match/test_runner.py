@@ -170,7 +170,7 @@ def test_no_pending_offer_builds_nothing() -> None:
 
 
 def test_default_key_name_matches_the_real_embedders_naming() -> None:
-    """Le digest retrouve les scores sans construire de fournisseur : nom = « <fournisseur>:<modèle> »."""
+    """Le digest retrouve les scores sans fournisseur : le nom est « <fournisseur>:<modèle> »."""
     from vigie.match.embedders.bedrock import BedrockEmbedder
     from vigie.match.embedders.local import LocalEmbedder
 
