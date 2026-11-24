@@ -252,13 +252,27 @@ def test_aws_trust_policy_is_restricted_to_the_private_repository_environment() 
     statement = trust["Statement"][0]
     condition = statement["Condition"]["StringEquals"]
     assert statement["Action"] == "sts:AssumeRoleWithWebIdentity"
+    # GitHub met les identifiants numériques du propriétaire et du dépôt dans le `sub`
+    # (observé sur un vrai job : repo:HLeviel@13158585/vigie-run@1469974815:environment:radar)
     assert (
         condition["token.actions.githubusercontent.com:sub"]
-        == "repo:HLeviel/vigie-run:environment:radar"
+        == "repo:HLeviel@<OWNER_ID>/vigie-run@<REPO_ID>:environment:radar"
     )
     assert condition["token.actions.githubusercontent.com:aud"] == "sts.amazonaws.com"
     assert "*" not in json.dumps(condition)
     assert "HLeviel/vigie:" not in json.dumps(trust)  # jamais le dépôt public
+
+
+def test_readme_explains_how_to_find_the_real_subject_claim() -> None:
+    text = (MODEL / "README.md").read_text()
+    assert "Trouver le `sub` réel" in text
+    assert "ACTIONS_ID_TOKEN_REQUEST_TOKEN" in text
+    assert "<OWNER_ID>" in text and "<REPO_ID>" in text
+    assert "jamais le jeton" in text
+    # l'étape de debug ne doit pas afficher le jeton : seulement certaines revendications
+    snippet = text[text.index("Debug OIDC") :]
+    assert "print(json.dumps({k: c.get(k)" in snippet
+    assert "print(json.load" not in snippet
 
 
 def test_aws_permissions_are_limited_to_the_state_object() -> None:

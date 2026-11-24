@@ -238,3 +238,9 @@ Décisions d'implémentation de `radar` que `spec_radar.md` ne tranche pas. Une 
 | 24/11/2026 | `pull_request_target` interdit : un test refuse ce déclencheur dans tous les workflows du dépôt et du modèle | Spec 1.3 | Spec 1.3 (fait) |
 | 24/11/2026 | `SECURITY.md` ajouté (architecture publique/privée, règles de contribution, signalement, procédure en cas de fuite : révoquer avant de nettoyer l'historique). Il était demandé depuis la spec 1.0 et reporté le 19/11 « avant le lot M2 » | Hors de la différence 1.2 vers 1.3 mais en attente depuis le début | Spec 1.3 |
 | 24/11/2026 | Le dossier `cv/` du dépôt privé est mentionné dans le README du modèle mais n'est utilisé par aucun module pour l'instant | Réservé à `match` et `cv` | Modules `match` et `cv` |
+
+## Correctif : format du `sub` OIDC
+
+| Date | Décision | Raison | À confirmer à |
+|---|---|---|---|
+| 24/11/2026 | La politique de confiance du rôle exige le `sub` **avec identifiants numériques** (`repo:HLeviel@<OWNER_ID>/vigie-run@<REPO_ID>:environment:radar`) ; le README du modèle explique comment lire le `sub` réel (étape de debug temporaire qui n'affiche que des revendications) et mentionne l'ancien format pour un dépôt plus ancien. Cela remplace le `sub` sans identifiants de la décision du 24/11 | Premier lancement réel : `Not authorized to perform sts:AssumeRoleWithWebIdentity` ; le jeton portait `repo:HLeviel@13158585/…@1469974815:environment:radar` | Le README de `vigie-run` reprendra ce correctif à la prochaine version taguée |
