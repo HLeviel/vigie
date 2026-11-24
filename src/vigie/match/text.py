@@ -60,6 +60,8 @@ class ProfileText:
 
     owner: str
     text: str
+    kind: Literal["summary", "experience", "role"]
+    index: int  # rang parmi les textes de même nature (0 pour le résumé)
 
 
 def profile_texts(profile: Profile, max_chars: int = DEFAULT_MAX_CHARS) -> list[ProfileText]:
@@ -68,13 +70,20 @@ def profile_texts(profile: Profile, max_chars: int = DEFAULT_MAX_CHARS) -> list[
     Le propriétaire contient l'empreinte du profil : un changement de profil donne d'autres
     propriétaires, donc invalide les embeddings du profil sans toucher à ceux des offres.
     """
-    texts = [profile.summary]
-    for experience in profile.experiences:
+    entries: list[tuple[Literal["summary", "experience", "role"], int, str]] = [
+        ("summary", 0, profile.summary)
+    ]
+    for rank, experience in enumerate(profile.experiences):
         parts = [experience.title, experience.description, ", ".join(experience.skills)]
-        texts.append(" . ".join(part for part in parts if part))
-    texts.extend(profile.target_roles)
+        entries.append(("experience", rank, " . ".join(part for part in parts if part)))
+    entries.extend(("role", rank, role) for rank, role in enumerate(profile.target_roles))
     prefix = f"profile:{profile.profile_hash}"
     return [
-        ProfileText(owner=f"{prefix}:{n}", text=truncate(clean_text(text), max_chars))
-        for n, text in enumerate(texts)
+        ProfileText(
+            owner=f"{prefix}:{n}",
+            text=truncate(clean_text(text), max_chars),
+            kind=kind,
+            index=rank,
+        )
+        for n, (kind, rank, text) in enumerate(entries)
     ]
