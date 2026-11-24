@@ -239,6 +239,17 @@ _INJECTION_RE = re.compile(
 )
 
 
+_CONTROL_RE = re.compile(r"[\x00-\x1f\x7f-\x9f]")
+
+
+def strip_invisible(text: str) -> str:
+    """Retire les caractères invisibles et bidirectionnels, remplace les contrôles par un espace.
+
+    Les espaces ne sont pas normalisés ici (voir ``normalize_spaces``).
+    """
+    return _CONTROL_RE.sub(" ", _INVISIBLE_RE.sub("", text))
+
+
 def is_suspicious(text: str) -> bool:
     """Vrai si le texte contient des caractères invisibles ou un motif d'injection de prompt.
 
