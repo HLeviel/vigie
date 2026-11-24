@@ -11,6 +11,7 @@ from pathlib import Path
 from types import TracebackType
 from typing import Any, Self
 
+from vigie.match.schema import EMBEDDINGS_MIGRATION
 from vigie.radar.models import Offer, SourceReport
 
 DEFAULT_DB_PATH = Path.home() / ".local" / "share" / "vigie" / "radar.db"
@@ -75,6 +76,7 @@ MIGRATIONS: list[str] = [
         PRIMARY KEY (run_id, source)
     );
     """,
+    EMBEDDINGS_MIGRATION,
 ]
 SCHEMA_VERSION = len(MIGRATIONS)
 
@@ -145,6 +147,11 @@ class Store:
             self._conn.executescript(MIGRATIONS[index])
             self._conn.execute(f"PRAGMA user_version = {index + 1}")
         self._conn.commit()
+
+    @property
+    def connection(self) -> sqlite3.Connection:
+        """Connexion partagée avec les tables des autres modules (``match``)."""
+        return self._conn
 
     @property
     def version(self) -> int:

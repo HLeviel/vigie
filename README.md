@@ -49,7 +49,7 @@ Spécifications : module `radar` : [`docs/specs/radar.md`](docs/specs/radar.md) 
 | Module | Rôle | Statut |
 |---|---|---|
 | `radar` | Veille quotidienne des offres, sans LLM | Lots M1 et M2 implémentés ; exécution réelle vérifiée le 24/11/2026 (dépôt privé `vigie-run`, digest reçu, état S3 relu à l'exécution suivante). Alertes email : France Travail vérifié, APEC, WTTJ et LinkedIn non (#16). API France Travail : en attente d'accès (#19) |
-| `match` | Score offre/profil en étages (règles, embeddings, LLM), évaluation precision@k | En cours : étape 1 (profil, configuration, `vigie match check`) ; le scoring reste à faire |
+| `match` | Score offre/profil en étages (règles, embeddings, LLM), évaluation precision@k | En cours : étapes 1 et 2 (profil, configuration, `vigie match check`, préparation des textes, interface d'embeddings et cache) ; aucun fournisseur d'embeddings ni score pour l'instant |
 | `cv` | CV et lettre adaptés, packagés en Agent Skill | Prévu |
 | `agent` | Agent LangChain, validation humaine avant action | Prévu |
 
