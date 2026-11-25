@@ -143,20 +143,28 @@ def populated_store(items: list[EvalItem], profile_hash: str, count: int | None 
     return store
 
 
-def test_load_from_store_uses_the_current_profile_version_only(items: list[EvalItem]) -> None:
-    store = populated_store(items, "hash-courant", 10)
-    LabelStore(store).put(items[11].uid, "ancien-hash", "pertinent", NOW)
-    assert len(load_from_store(store, "hash-courant")) == 10
-    assert load_from_store(store, "autre") == []
-    assert LabelStore(store).count_other_profiles("hash-courant") == 1
+def test_labels_survive_a_profile_change(items: list[EvalItem]) -> None:
+    store = populated_store(items, "ancien-hash", 10)
+    loaded = load_from_store(store)  # le profil a changé depuis : les annotations restent valables
+    assert [i.uid for i in loaded] == sorted(i.uid for i in items[:10])
+    assert LabelStore(store).count_other_profiles("hash-courant") == 10
+    assert LabelStore(store).count_other_profiles("ancien-hash") == 0
     with pytest.raises(ValueError):
         LabelStore(store).put("x", "h", "bof", NOW)
 
 
-def test_relabeling_replaces_the_label(items: list[EvalItem]) -> None:
-    store = populated_store(items, "h", 3)
-    LabelStore(store).put(items[0].uid, "h", "non pertinent", NOW)
-    assert LabelStore(store).for_profile("h")[items[0].uid] == "non pertinent"
+def test_relabeling_replaces_the_label_even_under_another_profile_version(
+    items: list[EvalItem],
+) -> None:
+    store = populated_store(items, "ancien", 3)
+    later = datetime(2026, 12, 1, tzinfo=UTC)
+    LabelStore(store).put(items[0].uid, "nouveau", "non pertinent", later)
+    assert LabelStore(store).latest()[items[0].uid] == "non pertinent"
+    assert LabelStore(store).newest() == later.isoformat()
+    same = datetime(2026, 12, 2, tzinfo=UTC)
+    LabelStore(store).put(items[0].uid, "nouveau", "pertinent", same)  # même version : remplacé
+    assert LabelStore(store).latest()[items[0].uid] == "pertinent"
+    assert len(load_from_store(store)) == 3
 
 
 def test_score_buckets() -> None:

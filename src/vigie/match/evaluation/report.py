@@ -110,6 +110,8 @@ def render_markdown(result: EvalResult, svg_name: str | None = None) -> str:
         "## Limites",
         "",
         "- `hybrid+llm` n'est pas évalué (lot M3).",
+        "- Les annotations sont conservées d'une version du profil à l'autre : elles ne sont "
+        "revues qu'à la demande.",
         "- Les décisions (modèle par défaut, poids, seuil `min_score`) se reportent dans la spec "
         "avec ce rapport.",
     ]

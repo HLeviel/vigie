@@ -76,9 +76,9 @@ def split(items: list[EvalItem]) -> tuple[list[EvalItem], list[EvalItem]]:
     return ranked[:cut], ranked[cut:]
 
 
-def load_from_store(store: Store, profile_hash: str) -> list[EvalItem]:
-    """Offres annotées sous la version courante du profil."""
-    labels = LabelStore(store).for_profile(profile_hash)
+def load_from_store(store: Store) -> list[EvalItem]:
+    """Offres annotées (dernière étiquette de chacune, toutes versions du profil confondues)."""
+    labels = LabelStore(store).latest()
     offers = {o.uid: o for o in store.offers_by_uid(list(labels))}
     return [EvalItem(offers[uid], label) for uid, label in sorted(labels.items()) if uid in offers]
 
@@ -108,12 +108,21 @@ def score_bucket(score: float | None) -> str:
 
 
 def sample_for_labeling(
-    store: Store, key: ScoringKey, n: int, already_labeled: set[str], seed: str = SPLIT_SEED
+    store: Store,
+    key: ScoringKey,
+    n: int,
+    already_labeled: set[str],
+    seed: str = SPLIT_SEED,
+    only: set[str] | None = None,
 ) -> list[Offer]:
     """``n`` offres à annoter, tirées **à tour de rôle dans chaque strate** (source × niveau de
     score), pour ne pas n'annoter que les offres déjà bien classées. Déterministe pour une base
-    et un jeu d'étiquettes donnés."""
-    candidates = [o for o in store.retained_offers() if o.uid not in already_labeled]
+    et un jeu d'étiquettes donnés. ``only`` limite le tirage à ces offres (réannotation)."""
+    candidates = [
+        o
+        for o in store.retained_offers()
+        if o.uid not in already_labeled and (only is None or o.uid in only)
+    ]
     scores = ScoreStore(store).get_many([o.uid for o in candidates], key)
     strata: dict[tuple[str, str], list[Offer]] = defaultdict(list)
     for offer in candidates:

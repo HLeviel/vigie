@@ -56,7 +56,7 @@ def fill_offers(setup: dict[str, Path]) -> None:
 
 def stored_labels(setup: dict[str, Path]) -> dict[str, str]:
     with Store.open(setup["db"]) as store:
-        return LabelStore(store).for_profile(load_profile_file(setup["profile"]).profile_hash)
+        return LabelStore(store).latest()
 
 
 # --- label ----------------------------------------------------------------------------------------
@@ -144,11 +144,36 @@ def test_eval_refuses_too_few_labels(setup: dict[str, Path]) -> None:
     assert result.exit_code == 1 and "au moins 10" in result.output
 
 
-def test_eval_ignores_labels_of_another_profile_version(setup: dict[str, Path]) -> None:
+def test_eval_keeps_labels_made_under_another_profile_version(setup: dict[str, Path]) -> None:
     label_fixture(setup, profile_hash="ancien-profil")
     result = invoke(setup, "eval")
-    assert result.exit_code == 1
-    assert "60 étiquette(s) posée(s) sous une autre version du profil : ignorées" in result.output
+    assert result.exit_code == 0, result.output
+    assert "60 étiquette(s) posée(s) sous une autre version du profil : conservées" in result.output
+    assert "60 offres annotées" in result.output
+
+
+def test_label_does_not_ask_again_after_a_profile_change(setup: dict[str, Path]) -> None:
+    fill_offers(setup)
+    invoke(setup, "label", "--n", "4", input_="p\np\np\np\n")
+    setup["profile"].write_text(setup["profile"].read_text().replace("ML engineer", "NLP engineer"))
+    again = invoke(setup, "label", "--n", "4")
+    assert "aucune offre à annoter" in again.output  # le profil a changé : rien à réannoter
+
+
+def test_relabel_only_on_request_and_replaces_the_label(setup: dict[str, Path]) -> None:
+    fill_offers(setup)
+    invoke(setup, "label", "--n", "4", input_="p\np\np\np\n")
+    assert set(stored_labels(setup).values()) == {"pertinent"}
+    result = invoke(setup, "label", "--relabel", "--n", "2", input_="n\nn\n")
+    assert result.exit_code == 0, result.output
+    labels = list(stored_labels(setup).values())
+    assert sorted(labels) == ["non pertinent", "non pertinent", "pertinent", "pertinent"]
+    assert "2 étiquette(s) posée(s) ; total 4" in result.output
+
+
+def test_relabel_without_any_annotation(setup: dict[str, Path]) -> None:
+    fill_offers(setup)
+    assert "aucune offre annotée à revoir" in invoke(setup, "label", "--relabel").output
 
 
 def test_eval_reports_a_provider_failure_without_details(

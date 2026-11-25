@@ -132,14 +132,23 @@ class LabelStore:
             (uid, profile_hash, label, now.astimezone(UTC).isoformat()),
         )
 
-    def for_profile(self, profile_hash: str) -> dict[str, str]:
+    def latest(self) -> dict[str, str]:
+        """Dernière étiquette de chaque offre, **quelle que soit la version du profil**.
+
+        Les annotations sont conservées quand le profil évolue : on ne réannote qu'à la demande
+        (``vigie match label --relabel``). Une réannotation remplace l'ancienne étiquette.
+        """
         rows = self._conn.execute(
-            "SELECT uid, label FROM labels WHERE profile_hash = ?", (profile_hash,)
+            "SELECT uid, label FROM labels ORDER BY labeled_at, profile_hash"
         ).fetchall()
-        return {str(r["uid"]): str(r["label"]) for r in rows}
+        return {str(r["uid"]): str(r["label"]) for r in rows}  # la dernière ligne l'emporte
+
+    def newest(self) -> str:
+        row = self._conn.execute("SELECT MAX(labeled_at) FROM labels").fetchone()
+        return str(row[0] or "")
 
     def count_other_profiles(self, profile_hash: str) -> int:
-        """Étiquettes posées sous une autre version du profil (non utilisées)."""
+        """Étiquettes posées sous une autre version du profil (conservées, pour information)."""
         row = self._conn.execute(
             "SELECT COUNT(*) FROM labels WHERE profile_hash != ?", (profile_hash,)
         ).fetchone()

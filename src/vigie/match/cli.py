@@ -140,16 +140,29 @@ def label(
     config: ConfigOption = None,
     db: DbOption = None,
     n: Annotated[int, typer.Option("--n", min=1, help="Nombre d'offres à annoter.")] = 20,
+    relabel: Annotated[
+        bool,
+        typer.Option(
+            "--relabel", help="Réannote des offres déjà annotées (la nouvelle étiquette remplace)."
+        ),
+    ] = False,
 ) -> None:
-    """Annote des offres réelles (affiche des offres : à utiliser en local ou en privé)."""
+    """Annote des offres réelles (affiche des offres : à utiliser en local ou en privé).
+
+    Les annotations ne dépendent pas de la version du profil : on ne réannote qu'à la demande.
+    """
     match, profile = _match_setup(config)
     key = scoring_key(match, profile, f"{match.embeddings.provider}:{match.embeddings.model}")
     with _open_store(db) as store:
         labels = LabelStore(store)
-        done = set(labels.for_profile(profile.profile_hash))
-        sample = sample_for_labeling(store, key, n, done)
+        done = set(labels.latest())
+        if relabel:
+            seed = f"relabel:{len(done)}:{labels.newest()}"  # un autre tirage après chaque passe
+            sample = sample_for_labeling(store, key, n, set(), seed, only=done)
+        else:
+            sample = sample_for_labeling(store, key, n, done)
         if not sample:
-            typer.echo("aucune offre à annoter")
+            typer.echo("aucune offre annotée à revoir" if relabel else "aucune offre à annoter")
             return
         added = 0
         for position, offer in enumerate(sample, start=1):
@@ -167,7 +180,7 @@ def label(
                 labels.put(offer.uid, profile.profile_hash, ANSWERS[answer], datetime.now(UTC))
                 store.commit()
                 added += 1
-        total = stats(load_from_store(store, profile.profile_hash))
+        total = stats(load_from_store(store))
     typer.echo(
         f"{added} étiquette(s) posée(s) ; total {total.total} dont {total.relevant} pertinente(s) "
         f"(objectif : {MIN_LABELED} dont {MIN_RELEVANT})"
@@ -202,10 +215,12 @@ def eval_(
     """Évalue les variantes de classement sur le jeu annoté et écrit un rapport publiable."""
     match, profile = _match_setup(config)
     with _open_store(db) as store:
-        items = load_from_store(store, profile.profile_hash)
+        items = load_from_store(store)
         other = LabelStore(store).count_other_profiles(profile.profile_hash)
         if other:
-            typer.echo(f"{other} étiquette(s) posée(s) sous une autre version du profil : ignorées")
+            typer.echo(
+                f"{other} étiquette(s) posée(s) sous une autre version du profil : conservées"
+            )
         if len(items) < MIN_FOR_EVAL:
             raise _fail(
                 f"{len(items)} offre(s) annotée(s) : au moins {MIN_FOR_EVAL} sont nécessaires "
