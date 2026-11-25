@@ -190,7 +190,7 @@ Le workflow installe Vigie depuis un **tag** du dépôt public, fixé par `VIGIE
 
 ```yaml
 env:
-  VIGIE_REF: v0.1.2
+  VIGIE_REF: v0.2.0
 ```
 
 Mettre à jour Vigie, c'est changer cette ligne (à la main, ou avec Renovate configuré dans `vigie-run`).
