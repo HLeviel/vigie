@@ -12,6 +12,7 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
+import pytest
 import yaml
 
 from vigie.settings import Settings
@@ -358,3 +359,150 @@ def test_readme_restricts_the_environment_to_main() -> None:
     text = (MODEL / "README.md").read_text()
     assert "uniquement `main`" in text
     assert "privé" in text.lower()
+
+
+# --- workflows d'annotation et d'évaluation du modèle (module match) ---
+
+ANNOTATION = ("match-label-export.yml", "match-label-import.yml", "match-eval.yml")
+PINNED = re.compile(r"^[^@\s]+@[0-9a-f]{40}( # v[0-9.]+)?$")
+
+
+def annotation_workflow(name: str) -> dict[Any, Any]:
+    return load(MODEL_WORKFLOWS / name)
+
+
+def annotation_runs(name: str) -> list[str]:
+    return [s["run"] for s in all_steps(annotation_workflow(name)) if "run" in s]
+
+
+@pytest.mark.parametrize("name", ANNOTATION)
+def test_annotation_workflows_share_the_radar_guard_rails(name: str) -> None:
+    workflow = annotation_workflow(name)
+    text = (MODEL_WORKFLOWS / name).read_text()
+    assert workflow["permissions"] == {"contents": "read", "id-token": "write"}
+    assert workflow["concurrency"] == {"group": "radar", "cancel-in-progress": False}
+    [job] = workflow["jobs"].values()
+    assert job["environment"] == "radar"
+    assert "env" not in job and set(workflow["env"]) == {"VIGIE_REF"}
+    assert workflow["env"]["VIGIE_REF"] == radar_model()["env"]["VIGIE_REF"]
+    assert "pull_request_target" not in text and "@main" not in text
+    assert "aws-access-key-id" not in text.lower()
+    for forbidden in ("actions/cache", "set -x", "ACTIONS_STEP_DEBUG"):
+        assert forbidden not in text
+    # toutes les actions sont épinglées par SHA
+    assert all(PINNED.match(s["uses"]) for s in all_steps(workflow) if "uses" in s)
+    [checkout] = [s for s in all_steps(workflow) if "actions/checkout" in s.get("uses", "")]
+    assert checkout["with"]["persist-credentials"] is False
+    [aws] = [s for s in all_steps(workflow) if "configure-aws-credentials" in s.get("uses", "")]
+    assert aws["with"]["role-to-assume"] == "${{ vars.AWS_ROLE_ARN }}"
+
+
+@pytest.mark.parametrize("name", ANNOTATION)
+def test_annotation_workflows_install_the_pinned_tag_and_echo_nothing_else(name: str) -> None:
+    version = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
+    assert annotation_workflow(name)["env"]["VIGIE_REF"] == f"v{version}"
+    commands = annotation_runs(name)
+    installs = [c for c in commands if "uv tool install" in c]
+    assert installs and all("github.com/HLeviel/vigie@${VIGIE_REF}" in c for c in installs)
+    echoes = [c for c in commands if "echo" in c]
+    assert echoes == ['echo "$(uv tool dir --bin)" >> "$GITHUB_PATH"']
+
+
+@pytest.mark.parametrize("name", ANNOTATION)
+def test_annotation_secrets_only_reach_the_vigie_step_and_inputs_never_reach_scripts(
+    name: str,
+) -> None:
+    workflow = annotation_workflow(name)
+    [job] = workflow["jobs"].values()
+    exposed = [s for s in job["steps"] if "secrets." in json.dumps(s)]
+    assert len(exposed) == 1 and "vigie match " in exposed[0]["run"]
+    assert set(exposed[0]["env"]) <= {"N", "VIGIE_STATE_BUCKET"}
+    assert exposed[0]["env"]["VIGIE_STATE_BUCKET"] == "${{ secrets.VIGIE_STATE_BUCKET }}"
+    for command in annotation_runs(name):  # une entrée utilisateur n'est jamais dans un script
+        assert "${{" not in command and "github.event" not in command
+
+
+def test_export_workflow_is_manual_and_uploads_a_one_day_artifact() -> None:
+    workflow = annotation_workflow("match-label-export.yml")
+    assert set(triggers(workflow)) == {"workflow_dispatch"}
+    assert triggers(workflow)["workflow_dispatch"]["inputs"]["n"]["default"] == "50"
+    [export] = [c for c in annotation_runs("match-label-export.yml") if "match label" in c]
+    assert "--export" in export and '--n "$N"' in export and "--import" not in export
+    [upload] = [s for s in all_steps(workflow) if "upload-artifact" in s.get("uses", "")]
+    assert upload["with"]["retention-days"] == 1
+    assert upload["with"]["path"] == "labels-*.csv"  # le CSV seulement
+
+
+def test_import_workflow_triggers_on_label_files_pushed_to_main() -> None:
+    workflow = annotation_workflow("match-label-import.yml")
+    assert set(triggers(workflow)) == {"push", "workflow_dispatch"}
+    assert triggers(workflow)["push"] == {"branches": ["main"], "paths": ["labels/*.csv"]}
+    text = (MODEL_WORKFLOWS / "match-label-import.yml").read_text()
+    assert "upload-artifact" not in text  # rien n'est republié
+
+
+def test_eval_workflow_is_manual_and_uploads_only_the_report() -> None:
+    workflow = annotation_workflow("match-eval.yml")
+    assert set(triggers(workflow)) == {"workflow_dispatch"}
+    assert triggers(workflow)["workflow_dispatch"]["inputs"]["local"]["default"] is False
+    [upload] = [s for s in all_steps(workflow) if "upload-artifact" in s.get("uses", "")]
+    assert upload["with"]["path"] == "eval/" and upload["with"]["retention-days"] <= 7
+
+
+def run_import_step(tmp_path: Path, names: list[str]) -> list[str]:
+    """Exécute le vrai bloc `run:` d'import avec un faux `vigie` ; renvoie ses arguments."""
+    steps = all_steps(annotation_workflow("match-label-import.yml"))
+    script = next(s["run"] for s in steps if "--import" in s.get("run", ""))
+    (tmp_path / "labels").mkdir()
+    for name in names:
+        (tmp_path / "labels" / name).write_text("uid;label\n")
+    fake = tmp_path / "vigie"
+    fake.write_text('#!/bin/sh\nfor a in "$@"; do printf "%s\\n" "$a"; done > "$ARGS_FILE"\n')
+    fake.chmod(0o755)
+    env = {
+        **os.environ,
+        "PATH": f"{tmp_path}:{os.environ['PATH']}",
+        "ARGS_FILE": str(tmp_path / "args.txt"),
+    }
+    done = subprocess.run(  # noqa: S603
+        ["bash", "-e", "-c", script],  # noqa: S607
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert done.returncode == 0, done.stderr
+    return (tmp_path / "args.txt").read_text().splitlines()
+
+
+def test_import_script_passes_every_file_in_order_even_with_spaces(tmp_path: Path) -> None:
+    args = run_import_step(
+        tmp_path, ["labels-2026-12-02.csv", "labels-2026-11-25.csv", "mon fichier.csv"]
+    )
+    assert args == [
+        "match",
+        "label",
+        "--config",
+        "config/radar.yaml",
+        "--import",
+        "labels/labels-2026-11-25.csv",
+        "--import",
+        "labels/labels-2026-12-02.csv",
+        "--import",
+        "labels/mon fichier.csv",
+    ]
+
+
+def test_model_readme_documents_the_annotation_flow() -> None:
+    text = (MODEL / "README.md").read_text()
+    for needle in (
+        "match-label-export",
+        "match-label-import",
+        "match-eval",
+        "labels/",
+        "Upload files",
+        "sans score ni rang",
+        "`p` ou `pertinent`",
+    ):
+        assert needle in text, needle

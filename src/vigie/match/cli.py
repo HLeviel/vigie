@@ -5,6 +5,8 @@ contenu du profil, ni un secret.
 """
 
 import importlib.util
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
@@ -13,6 +15,7 @@ import typer
 
 from vigie.match.config import MatchConfig
 from vigie.match.embedders.base import Embedder, EmbedderError, build_embedder
+from vigie.match.evaluation.csvio import CsvError, export_csv, read_import
 from vigie.match.evaluation.dataset import (
     MIN_LABELED,
     MIN_RELEVANT,
@@ -28,6 +31,7 @@ from vigie.match.store import EmbeddingStore, LabelStore
 from vigie.match.text import clean_text, truncate
 from vigie.radar.config import ConfigError, resolve_config
 from vigie.radar.models import Offer
+from vigie.radar.state import S3State, StateSyncError
 from vigie.radar.store import DEFAULT_DB_PATH, Store, StoreError
 from vigie.settings import Settings
 
@@ -39,6 +43,7 @@ ConfigOption = Annotated[
 DbOption = Annotated[Path | None, typer.Option("--db", help="Chemin de radar.db.")]
 
 EXIT_CONFIG = 1
+EXIT_STATE = 5  # état S3 inaccessible ou non synchronisé (comme `radar run`)
 
 
 def _fail(message: str) -> typer.Exit:
@@ -111,14 +116,45 @@ def _match_setup(config: Path | None) -> tuple[MatchConfig, Profile]:
         raise _fail(str(exc)) from None
 
 
-def _open_store(db: Path | None) -> Store:
-    path = db or Settings().vigie_db_path or DEFAULT_DB_PATH
+def _state(settings: Settings) -> S3State | None:
+    return S3State(settings.vigie_state_bucket) if settings.vigie_state_bucket else None
+
+
+@contextmanager
+def _database(db: Path | None, *, write: bool) -> Iterator[Store]:
+    """Ouvre la base ; avec ``VIGIE_STATE_BUCKET``, l'état est lu depuis S3 d'abord et, si
+    ``write``, réécrit après une commande réussie (écriture conditionnelle, comme ``radar run``).
+    Une commande qui échoue ne renvoie rien."""
+    settings = Settings()
+    path = db or settings.vigie_db_path or DEFAULT_DB_PATH
+    state = _state(settings)
+    remote = None
+    if state is not None:
+        try:
+            remote = state.pull(path)
+        except StateSyncError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(EXIT_STATE) from None
+        typer.echo("état S3 : " + ("téléchargé" if remote.etag else "aucun état"))
     if not path.exists():
         raise _fail("aucune base : lancer d'abord `vigie radar run`")
     try:
-        return Store.open(path)
+        store = Store.open(path)
     except StoreError as exc:
         raise _fail(str(exc)) from None
+    try:
+        yield store
+    except BaseException:
+        store.close()
+        raise
+    store.close()
+    if state is not None and remote is not None and write:
+        try:
+            state.push(path, remote)
+        except StateSyncError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(EXIT_STATE) from None
+        typer.echo("état S3 : synchronisé")
 
 
 def _show(offer: Offer, position: int, total: int) -> None:
@@ -139,31 +175,65 @@ def _show(offer: Offer, position: int, total: int) -> None:
 def label(
     config: ConfigOption = None,
     db: DbOption = None,
-    n: Annotated[int, typer.Option("--n", min=1, help="Nombre d'offres à annoter.")] = 20,
+    n: Annotated[
+        int | None,
+        typer.Option("--n", min=1, help="Nombre d'offres (20 en interactif, 50 en export)."),
+    ] = None,
     relabel: Annotated[
         bool,
         typer.Option(
             "--relabel", help="Réannote des offres déjà annotées (la nouvelle étiquette remplace)."
         ),
     ] = False,
+    export: Annotated[
+        Path | None, typer.Option("--export", help="Écrit un CSV à annoter dans un tableur.")
+    ] = None,
+    import_: Annotated[
+        list[Path] | None,
+        typer.Option("--import", help="Importe un CSV annoté (option répétable)."),
+    ] = None,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Avec --import : compteurs seulement, rien d'écrit.")
+    ] = False,
 ) -> None:
-    """Annote des offres réelles (affiche des offres : à utiliser en local ou en privé).
+    """Annote des offres réelles : en interactif, par CSV (--export puis --import).
 
-    Les annotations ne dépendent pas de la version du profil : on ne réannote qu'à la demande.
+    Affiche ou exporte des offres réelles : à utiliser en local ou dans le dépôt privé. Les
+    annotations ne dépendent pas de la version du profil : on ne réannote qu'à la demande.
     """
+    if export is not None and import_:
+        raise _fail("--export et --import sont exclusifs")
+    if dry_run and not import_:
+        raise _fail("--dry-run s'utilise avec --import")
+    if import_ and (n is not None or relabel):
+        raise _fail("--n et --relabel ne s'appliquent pas à --import")
     match, profile = _match_setup(config)
     key = scoring_key(match, profile, f"{match.embeddings.provider}:{match.embeddings.model}")
-    with _open_store(db) as store:
+    if import_:
+        _import_labels(db, profile, import_, dry_run)
+        return
+    with _database(db, write=False) as store:
         labels = LabelStore(store)
         done = set(labels.latest())
+        count = n if n is not None else (50 if export is not None else 20)
         if relabel:
             seed = f"relabel:{len(done)}:{labels.newest()}"  # un autre tirage après chaque passe
-            sample = sample_for_labeling(store, key, n, set(), seed, only=done)
+            sample = sample_for_labeling(store, key, count, set(), seed, only=done)
         else:
-            sample = sample_for_labeling(store, key, n, done)
+            sample = sample_for_labeling(store, key, count, done)
         if not sample:
             typer.echo("aucune offre annotée à revoir" if relabel else "aucune offre à annoter")
             return
+        if export is not None:
+            written = export_csv(sample, export)
+            typer.echo(f"{written} offre(s) exportée(s) dans {export.name} (UTF-8, séparateur ;)")
+            return
+    _label_interactively(db, sample, profile)
+
+
+def _label_interactively(db: Path | None, sample: list[Offer], profile: Profile) -> None:
+    with _database(db, write=True) as store:
+        labels = LabelStore(store)
         added = 0
         for position, offer in enumerate(sample, start=1):
             _show(offer, position, len(sample))
@@ -181,10 +251,48 @@ def label(
                 store.commit()
                 added += 1
         total = stats(load_from_store(store))
-    typer.echo(
-        f"{added} étiquette(s) posée(s) ; total {total.total} dont {total.relevant} pertinente(s) "
+    typer.echo(_summary_line(added, total.total, total.relevant))
+
+
+def _summary_line(added: int, total: int, relevant: int) -> str:
+    return (
+        f"{added} étiquette(s) posée(s) ; total {total} dont {relevant} pertinente(s) "
         f"(objectif : {MIN_LABELED} dont {MIN_RELEVANT})"
     )
+
+
+def _import_labels(db: Path | None, profile: Profile, files: list[Path], dry_run: bool) -> None:
+    """Importe un ou plusieurs CSV annotés ; les erreurs sont signalées par ligne et motif, jamais
+    par contenu, et n'empêchent pas l'import des autres lignes."""
+    with _database(db, write=not dry_run) as store:
+        labels = LabelStore(store)
+        now = datetime.now(UTC)
+        read = annotated = skipped = failed = 0
+        for file in files:
+            try:
+                parsed = read_import(file)
+            except CsvError as exc:
+                raise _fail(f"{file.name} : {exc}") from None
+            known = store.existing_uids(list({row.uid for row in parsed.rows}))
+            errors = list(parsed.errors)
+            for row in parsed.rows:
+                if row.uid not in known:
+                    errors.append((row.line, "uid inconnu"))
+                    continue
+                annotated += 1
+                if not dry_run:
+                    labels.put(row.uid, profile.profile_hash, row.label, now)
+            for line, reason in sorted(errors):
+                typer.echo(f"{file.name} ligne {line} : {reason}", err=True)
+            read += parsed.read
+            skipped += parsed.skipped
+            failed += len(errors)
+        total = stats(load_from_store(store))
+    typer.echo(
+        f"lignes lues : {read}, annotées : {annotated}, ignorées (non annotées) : {skipped}, "
+        f"en erreur : {failed}" + (" (dry-run : rien d'écrit)" if dry_run else "")
+    )
+    typer.echo(_summary_line(annotated if not dry_run else 0, total.total, total.relevant))
 
 
 def _embedders(match: MatchConfig) -> list[Embedder]:
@@ -214,7 +322,7 @@ def eval_(
 ) -> None:
     """Évalue les variantes de classement sur le jeu annoté et écrit un rapport publiable."""
     match, profile = _match_setup(config)
-    with _open_store(db) as store:
+    with _database(db, write=True) as store:
         items = load_from_store(store)
         other = LabelStore(store).count_other_profiles(profile.profile_hash)
         if other:

@@ -1,6 +1,6 @@
 # Spécification : module `vigie/match`
 
-> Version 1.0, 24 novembre 2026. Document destiné à l'implémentation par Claude Code. Emplacement : `docs/specs/match.md`.
+> Version 1.1, 25 novembre 2026 (voir le journal des modifications). Document destiné à l'implémentation par Claude Code. Emplacement : `docs/specs/match.md`.
 > Prérequis : `docs/specs/radar.md` (1.5). Les règles transverses de `radar` s'appliquent ici sauf mention contraire : secrets (section 7), confidentialité, fixtures fictives, décisions hors spec (section 18).
 > En cas d'ambiguïté, ou si un modèle ou une API ne se comporte pas comme décrit, **s'arrêter et poser la question** plutôt que deviner.
 
@@ -202,10 +202,30 @@ Recherche par similarité : calcul en mémoire (NumPy) sur les offres de l'exéc
 ## 9. Évaluation (M2)
 
 ### Jeu de données
-- Annotation depuis la base réelle avec `vigie match label` : affiche une offre (titre, entreprise, lieu, extrait) et demande `p` (pertinent), `m` (peut-être), `n` (non pertinent), `s` (passer). Échantillon **stratifié** par source et par niveau de score, pour ne pas annoter que les offres déjà bien classées.
+- **Annotation par fichier CSV**, sans environnement de développement : l'échantillon est exporté dans un CSV, annoté dans un tableur (Excel, LibreOffice, Numbers ou Google Sheets), puis réimporté (détail ci-dessous). La commande interactive `vigie match label` reste disponible pour un usage local.
+- Échantillon **stratifié** par source et par niveau de score, pour ne pas annoter que les offres déjà bien classées.
 - Objectif : **150 offres annotées au moins, dont 30 pertinentes au moins**.
-- Le jeu annoté est **privé** (table `labels` de la base, export possible dans `vigie-run`). Il n'est jamais commité dans le dépôt public.
+- Le jeu annoté est **privé** (table `labels` de la base). Ni lui ni les CSV ne sont jamais commités dans le dépôt public.
 - Découpage fixe et reproductible (graine documentée) : 30 % pour régler les poids et la normalisation, 70 % pour mesurer. Aucun réglage sur la partie de mesure.
+
+### Format du CSV d'annotation
+- Fichier `labels-AAAA-MM-JJ.csv`, UTF-8 **avec BOM** et séparateur `;` (ouverture directe dans Excel en français), guillemets selon la RFC 4180, une offre par ligne, **ordre aléatoire**.
+- Colonnes : `uid`, `label` (vide), `titre`, `entreprise`, `lieu`, `contrat`, `publiée` (jj/mm/aaaa), `source`, `extrait` (500 caractères au plus, retours à la ligne remplacés par des espaces), `lien`.
+- **Aucun score ni rang** dans le fichier : l'annotation ne doit pas être influencée par le classement à évaluer.
+- **Protection contre l'injection de formules** : toute cellule issue d'une offre qui commence par `=`, `+`, `-`, `@`, une tabulation ou un retour chariot est préfixée d'une apostrophe. Les caractères invisibles et bidirectionnels sont retirés.
+- Valeurs acceptées dans `label`, sans casse ni accents : `p` ou `pertinent` ; `m` ou `peut-etre` ; `n` ou `non` ; cellule vide = non annotée.
+
+### Import
+- `vigie match label --import FICHIER` : lit le CSV (avec ou sans BOM, séparateur `;` ou `,` détecté), associe chaque ligne par `uid`, enregistre l'étiquette avec le `profile_hash` courant ; la dernière étiquette d'une offre remplace la précédente.
+- Erreurs signalées par **numéro de ligne et motif** (`uid inconnu`, `étiquette invalide`), jamais par contenu ; une ligne en erreur n'empêche pas l'import des autres. Les colonnes autres que `uid` et `label` sont ignorées : modifier un titre dans le tableur n'a aucun effet.
+- `--dry-run` : affiche seulement les compteurs (lignes lues, annotées, ignorées, en erreur).
+- Résumé final : nombre total d'offres annotées, dont pertinentes, et rappel de l'objectif de la section suivante.
+
+### Workflows d'annotation dans `vigie-run`
+Pour annoter sans rien installer, le modèle `examples/vigie-run/` fournit trois workflows (déclenchement manuel ou par dépôt de fichier, même groupe `concurrency` que `radar.yml`, même environnement `radar`, état S3 lu et réécrit comme `radar run`) :
+- `match-label-export.yml` (`workflow_dispatch`, entrée `n`, 50 par défaut) : produit le CSV et le dépose en **artefact** du run (conservation 1 jour). Le dépôt étant privé, l'artefact n'est visible que de ses collaborateurs. L'utilisateur le télécharge depuis l'onglet Actions.
+- `match-label-import.yml` (déclenché par un push sur `labels/*.csv`, ou à la main) : l'utilisateur dépose le CSV annoté dans `labels/` de `vigie-run` (interface web GitHub, bouton « Add file > Upload files ») ; le workflow importe les étiquettes, renvoie l'état vers S3 et affiche le résumé (compteurs seulement).
+- `match-eval.yml` (`workflow_dispatch`) : produit le rapport d'évaluation en artefact ; il ne contient que des agrégats et peut être copié dans `docs/eval/` du dépôt public.
 
 ### Variantes comparées
 | Variante | Description |
@@ -237,11 +257,13 @@ Recherche par similarité : calcul en mémoire (NumPy) sur les offres de l'exéc
 ```
 vigie match score   [--config PATH] [--db PATH] [--all] [--dry-run]   # score les offres non scorées (ou toutes)
 vigie match explain UID [--config PATH] [--db PATH]                    # détail d'un score (privé : affiche l'offre)
-vigie match label   [--config PATH] [--db PATH] [--n 20]               # annotation interactive (M2)
+vigie match label   [--config PATH] [--db PATH] [--n 20] [--relabel]   # annotation interactive (M2, usage local)
+vigie match label   --export FICHIER [--n 50] [--relabel]              # CSV à annoter (M2)
+vigie match label   --import FICHIER [--dry-run]                       # import du CSV annoté (M2)
 vigie match eval    [--config PATH] [--db PATH] [--output PATH]        # rapport d'évaluation (M2)
 vigie match check   [--config PATH]                                    # profil, modèle, secrets, sans appel réseau
 ```
-- `explain` et `label` affichent des offres réelles : à n'utiliser qu'en local ou dans un environnement privé.
+- `explain`, `label` et le CSV exporté contiennent des offres réelles : à n'utiliser qu'en local ou dans le dépôt privé, jamais dans le dépôt public.
 - `score` est appelé automatiquement par `radar run` (section 8) ; la commande sert au recalcul, par exemple après un changement de profil.
 
 ## 11. Arborescence
@@ -268,6 +290,8 @@ docs/eval/              # rapports d'évaluation publiés (agrégats seulement)
 - Embedders : faux fournisseur déterministe pour tous les tests ; `local` et `bedrock` testés avec des doubles (aucun téléchargement de modèle ni appel réseau en CI) ; vecteurs normalisés ; cache par `text_hash`.
 - Intégration : `radar run` avec `match` activé trie le digest par score ; panne de `match` : digest envoyé quand même et code 6.
 - Évaluation : métriques vérifiées sur des cas calculés à la main ; découpage reproductible ; rapport sans titre ni entreprise (test qui le vérifie).
+- CSV d'annotation : aller-retour export puis import ; BOM et séparateur ; absence de score ; neutralisation des formules (`=`, `+`, `-`, `@`) ; étiquettes acceptées et refusées ; `uid` inconnu ; colonnes modifiées sans effet ; messages d'erreur sans contenu d'offre.
+- Workflows d'annotation du modèle : contrôles statiques (déclencheurs, artefact à conservation courte, `concurrency` partagé, aucun `echo` de contenu).
 - LLM (M3) : schéma de sortie, réponse invalide, cache, budget, offres hostiles, offre `suspicious` jamais envoyée.
 - Couverture visée : 85 % sur `src/vigie/match`.
 
@@ -281,6 +305,7 @@ docs/eval/              # rapports d'évaluation publiés (agrégats seulement)
 - [ ] Aucune donnée de profil ou d'offre réelle dans le dépôt public.
 
 ### M2
+- [ ] Annotation possible sans environnement de développement : export, annotation dans un tableur, import, entièrement via les workflows de `vigie-run`.
 - [ ] 150 offres annotées au moins, dont 30 pertinentes.
 - [ ] Rapport comparant au moins `baseline:date`, `baseline:tfidf`, deux modèles d'embedding et `hybrid`, avec intervalles de confiance.
 - [ ] Rapport publié dans `docs/eval/`, sans titre d'offre ni nom d'entreprise.
@@ -298,7 +323,8 @@ docs/eval/              # rapports d'évaluation publiés (agrégats seulement)
 3. `scoring.py` (étages 0 et 1) et explication, avec le faux fournisseur.
 4. Fournisseur `local`, puis fournisseur `bedrock` (permission IAM documentée dans `examples/vigie-run/`).
 5. Intégration dans `radar run` et dans le digest, code de sortie 6.
-6. M2 : `label`, jeu de données, métriques, variantes, rapport ; premier rapport réel.
+6. M2 : `label`, jeu de données, métriques, variantes, rapport (fait).
+6 bis. M2 : export et import CSV, workflows `match-label-export.yml`, `match-label-import.yml` et `match-eval.yml` dans `examples/vigie-run/` ; premier rapport réel.
 7. Mise à jour de la spec avec les choix issus de l'évaluation.
 8. M3 : `Judge`, prompt versionné, protections, cache et budget ; évaluation `hybrid+llm`.
 
@@ -306,4 +332,5 @@ Livrer par petites PR, une étape par PR, chacune avec ses tests ; décisions ho
 
 ## Journal des modifications
 
+- **1.1 (25/11/2026)** : annotation par fichier CSV (export, tableur, import) et workflows d'annotation et d'évaluation dans `vigie-run`, pour annoter sans environnement de développement ; protection contre l'injection de formules ; aucun score dans le fichier à annoter.
 - **1.0 (24/11/2026)** : version initiale.

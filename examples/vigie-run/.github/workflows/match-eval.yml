@@ -1,0 +1,61 @@
+name: match-eval
+
+# Évalue le classement sur les offres annotées et produit un rapport (Markdown + SVG) en artefact.
+# Le rapport ne contient que des agrégats (aucun titre d'offre, aucun nom d'entreprise) : il peut
+# être copié dans `docs/eval/` du dépôt public. L'évaluation appelle les fournisseurs d'embeddings
+# de `match.embeddings` et `match.evaluation.candidates` (Bedrock : rôle IAM ; local : case ci-dessous).
+on:
+  workflow_dispatch:
+    inputs:
+      local:
+        description: "Installer le modèle local (extra vigie[local], volumineux)"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+# Même groupe que radar.yml : l'état S3 est lu puis réécrit, jamais par deux exécutions à la fois.
+concurrency:
+  group: radar
+  cancel-in-progress: false
+
+env:
+  # Version de Vigie : un tag du dépôt public, jamais `main` (la même que dans radar.yml).
+  VIGIE_REF: v0.3.0
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: radar
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      - name: Installer Vigie à la version épinglée
+        if: ${{ !inputs.local }}
+        run: uv tool install "git+https://github.com/HLeviel/vigie@${VIGIE_REF}"
+      - name: Installer Vigie avec le modèle local
+        if: ${{ inputs.local }}
+        run: uv tool install "vigie[local] @ git+https://github.com/HLeviel/vigie@${VIGIE_REF}"
+      - name: Ajouter les outils uv au PATH
+        run: echo "$(uv tool dir --bin)" >> "$GITHUB_PATH"
+      # Aucune clé AWS stockée : jeton OIDC échangé contre le rôle limité au bucket d'état.
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Évaluer le classement
+        run: mkdir eval && vigie match eval --config config/radar.yaml --output "eval/match-$(date -u +%F).md"
+        env:
+          VIGIE_STATE_BUCKET: ${{ secrets.VIGIE_STATE_BUCKET }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: rapport-evaluation
+          path: eval/
+          retention-days: 7
+          if-no-files-found: error

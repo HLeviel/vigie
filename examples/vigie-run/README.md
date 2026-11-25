@@ -11,7 +11,11 @@ vigie-run/                       # PRIVÉ
 ├── config/radar.yaml            # vrais critères et vraies entreprises ciblées
 ├── profile/profile.yaml         # vrai profil (module match ; modèle fictif fourni ici)
 ├── cv/                          # CV réel (utilisé plus tard par match et cv)
+├── labels/                      # CSV annotés à importer (module match, voir la section 7)
 ├── .github/workflows/radar.yml  # copie de ce modèle
+├── .github/workflows/match-label-export.yml   # module match : export du CSV à annoter
+├── .github/workflows/match-label-import.yml   # module match : import des étiquettes
+├── .github/workflows/match-eval.yml           # module match : rapport d'évaluation
 └── README.md
 ```
 
@@ -190,7 +194,7 @@ Le workflow installe Vigie depuis un **tag** du dépôt public, fixé par `VIGIE
 
 ```yaml
 env:
-  VIGIE_REF: v0.2.0
+  VIGIE_REF: v0.3.0
 ```
 
 Mettre à jour Vigie, c'est changer cette ligne (à la main, ou avec Renovate configuré dans `vigie-run`).
@@ -203,6 +207,40 @@ Actions > radar > Run workflow. Le journal ne montre que des compteurs. La premi
 `radar.db` dans le bucket. La planification (`schedule`, 05:17 UTC) est déjà dans le modèle : elle
 s'exécute une fois ce dépôt prêt ; avant que les secrets existent, `check` échoue tôt et rien n'est
 collecté.
+
+## 7. Annoter sans environnement de développement (module `match`)
+
+Annoter des offres sert à mesurer la qualité du classement (objectif : **150 offres annotées au
+moins, dont 30 pertinentes**). Tout se fait depuis GitHub et un tableur, sans rien installer. Prérequis :
+copier les trois workflows `match-*.yml` dans `.github/workflows/` de `vigie-run`, avoir une section
+`match:` dans `config/radar.yaml` (avec `profile/profile.yaml`) et le même environnement `radar` que
+pour `radar.yml` (mêmes secrets et mêmes variables). Ces workflows lisent (et, pour l'import et
+l'évaluation, réécrivent) l'état S3 comme `radar run`, avec le même `concurrency`.
+
+1. **Exporter.** Actions > `match-label-export` > Run workflow (champ `n`, 50 par défaut). Le run dépose
+   `labels-AAAA-MM-JJ.csv` en **artefact** (conservé 1 jour, visible des seuls collaborateurs de ce
+   dépôt privé) : télécharge-le depuis la page du run et décompresse l'archive.
+2. **Annoter dans un tableur** (Excel, LibreOffice, Numbers, Google Sheets). Le fichier est en UTF-8
+   avec séparateur `;` : il s'ouvre directement dans Excel en français. Renseigne uniquement la colonne
+   `label` : `p` ou `pertinent`, `m` ou `peut-etre`, `n` ou `non` (sans casse ni accents) ; une cellule
+   vide veut dire « non annotée ». Les offres sont dans un ordre aléatoire et **sans score ni rang**,
+   pour ne pas t'influencer. Modifier une autre colonne n'a aucun effet. Enregistre en CSV (UTF-8).
+3. **Importer.** Dépose le fichier annoté dans le dossier `labels/` du dépôt, sur la branche `main`
+   (interface web : *Add file > Upload files*). Le workflow `match-label-import` se lance seul : il
+   importe **tous** les fichiers `labels/*.csv` (le nom le plus tardif l'emporte en cas de conflit),
+   renvoie l'état vers S3 et n'affiche que des compteurs : lignes lues, annotées, ignorées, en
+   erreur (avec le numéro de ligne et le motif, jamais le contenu). Une ligne en erreur n'empêche pas
+   l'import des autres. Les fichiers déjà importés sont rejoués à chaque dépôt : leurs étiquettes
+   écrasent celles posées autrement entre-temps.
+4. **Évaluer.** Actions > `match-eval` > Run workflow : le rapport (Markdown + SVG) est déposé en
+   artefact (7 jours). Il ne contient que des agrégats : copie-le dans `docs/eval/` du dépôt public.
+   Pour un modèle d'embedding `local`, coche « Installer le modèle local » (installation volumineuse,
+   non vérifiée) ; pour `bedrock`, le rôle IAM doit autoriser `bedrock:InvokeModel` sur le modèle (voir
+   la section 3).
+
+Les CSV et les artefacts contiennent des offres réelles : ne les commite jamais dans le dépôt public.
+Annotations conservées : elles ne dépendent pas de la version du profil ; réannote seulement à la
+demande (`vigie match label --relabel --export …`).
 
 ## Repli sans S3
 

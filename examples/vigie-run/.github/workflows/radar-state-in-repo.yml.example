@@ -20,7 +20,7 @@ concurrency:
 
 env:
   # Version de Vigie : un tag du dépôt public, jamais `main`.
-  VIGIE_REF: v0.2.0
+  VIGIE_REF: v0.3.0
 
 jobs:
   collect:

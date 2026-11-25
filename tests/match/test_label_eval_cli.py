@@ -4,10 +4,10 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
-from typer.testing import CliRunner
 
+from tests.match.cli_helpers import SEARCHES, fill_offers, invoke, runner, stored_labels
 from tests.match.fakes import FakeEmbedder
-from tests.match.helpers import NOW, PROFILE_EXAMPLE, make_offers
+from tests.match.helpers import NOW, PROFILE_EXAMPLE
 from vigie.match.embedders import base
 from vigie.match.evaluation.dataset import load_json
 from vigie.match.profile import load_profile_file
@@ -16,47 +16,6 @@ from vigie.radar.cli import root
 from vigie.radar.store import Store
 
 FIXTURE = Path(__file__).parent / "fixtures" / "eval_fictif.json"
-runner = CliRunner()
-SEARCHES = "searches:\n  - { name: s, keywords: [a], departments: ['69'] }\n"
-
-
-@pytest.fixture
-def setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Path]:
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setitem(base.REGISTRY, "local", lambda model: FakeEmbedder(name=f"local:{model}"))
-    monkeypatch.setitem(
-        base.REGISTRY, "bedrock", lambda model: FakeEmbedder(name=f"bedrock:{model}")
-    )
-    profile = tmp_path / "profile.yaml"
-    profile.write_text(PROFILE_EXAMPLE.read_text())
-    config = tmp_path / "radar.yaml"
-    config.write_text(
-        SEARCHES + f"match:\n  enabled: true\n  profile: {profile}\n"
-        "  embeddings: { provider: local, model: fictif }\n"
-        "  evaluation:\n    candidates:\n"
-        "      - { provider: bedrock, model: autre-modele }\n"
-        "      - { provider: local, model: fictif }\n"  # doublon du modèle configuré : ignoré
-    )
-    return {"config": config, "db": tmp_path / "radar.db", "tmp": tmp_path, "profile": profile}
-
-
-def invoke(setup: dict[str, Path], command: str, *extra: str, input_: str | None = None):  # type: ignore[no-untyped-def]
-    return runner.invoke(
-        root,
-        ["match", command, "--config", str(setup["config"]), "--db", str(setup["db"]), *extra],
-        input=input_,
-    )
-
-
-def fill_offers(setup: dict[str, Path]) -> None:
-    with Store.open(setup["db"]) as store:
-        for offer in make_offers():
-            store.insert_offer(offer, NOW)
-
-
-def stored_labels(setup: dict[str, Path]) -> dict[str, str]:
-    with Store.open(setup["db"]) as store:
-        return LabelStore(store).latest()
 
 
 # --- label ----------------------------------------------------------------------------------------
