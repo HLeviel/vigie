@@ -190,6 +190,7 @@ def test_setup_errors_exit_1_for_both_commands(setup: dict[str, Path]) -> None:
         assert result.exit_code == 1 and "valeur-secrete" not in result.output
     missing = runner.invoke(root, ["match", "eval", "--config", str(setup["tmp"] / "absent.yaml")])
     assert missing.exit_code == 1
+    setup["profile"].write_text(PROFILE_EXAMPLE.read_text())
     no_db = invoke({**setup, "db": setup["tmp"] / "inexistante.db"}, "eval")
     assert no_db.exit_code == 1 and "aucune base" in no_db.output
 
