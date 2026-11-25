@@ -49,7 +49,7 @@ Spécifications : module `radar` : [`docs/specs/radar.md`](docs/specs/radar.md) 
 | Module | Rôle | Statut |
 |---|---|---|
 | `radar` | Veille quotidienne des offres, sans LLM | Lots M1 et M2 implémentés ; exécution réelle vérifiée le 24/11/2026 (dépôt privé `vigie-run`, digest reçu, état S3 relu à l'exécution suivante). Alertes email : France Travail vérifié, APEC, WTTJ et LinkedIn non (#16). API France Travail : en attente d'accès (#19) |
-| `match` | Score offre/profil en étages (règles, embeddings, LLM), évaluation precision@k | En cours : étapes 1 à 5 : profil, `vigie match check`, score hybride explicable, fournisseurs d'embeddings `local` et `bedrock`, intégré à `radar run` et au digest (tri par score, code de sortie 6). Jamais exécuté pour de vrai : fournisseurs testés avec des doubles ; l'évaluation (lot M2) et l'étage LLM (lot M3) restent à faire |
+| `match` | Score offre/profil en étages (règles, embeddings, LLM), évaluation precision@k | En cours : étapes 1 à 6 : profil, `vigie match check`, score hybride explicable, fournisseurs d'embeddings `local` et `bedrock`, intégré à `radar run` et au digest (tri par score, code de sortie 6), annotation (`vigie match label`) et évaluation (`vigie match eval`, rapport Markdown + SVG). Jamais exécuté pour de vrai : aucune offre réelle n'est encore annotée, donc aucun rapport réel ; fournisseurs testés avec des doubles. L'étage LLM (lot M3) reste à faire |
 | `cv` | CV et lettre adaptés, packagés en Agent Skill | Prévu |
 | `agent` | Agent LangChain, validation humaine avant action | Prévu |
 

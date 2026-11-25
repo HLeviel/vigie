@@ -213,3 +213,19 @@ def test_check_bedrock_provider_needs_no_secret(
     cfg = write_setup(tmp_path, "  enabled: true\n  embeddings: { provider: bedrock, model: m }\n")
     result = runner.invoke(root, ["match", "check", "--config", str(cfg)])
     assert result.exit_code == 0 and "bedrock" in result.output
+
+
+def test_evaluation_candidates_are_validated() -> None:
+    ok = config_text(
+        "match:\n  embeddings: { provider: local, model: a }\n"
+        "  evaluation: { candidates: [ { provider: bedrock, model: b } ] }\n"
+    )
+    cfg = load_config_text(ok).match
+    assert cfg is not None and cfg.evaluation.candidates[0].provider == "bedrock"
+    with pytest.raises(ConfigError):
+        load_config_text(
+            config_text(
+                "match:\n  embeddings: { provider: local, model: a }\n"
+                "  evaluation: { candidates: [ { provider: autre, model: b } ] }\n"
+            )
+        )
