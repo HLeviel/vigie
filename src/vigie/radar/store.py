@@ -245,6 +245,19 @@ class Store:
             params = (limit,)
         return [self._offer_from_row(row) for row in self._conn.execute(sql, params)]
 
+    def existing_uids(self, uids: list[str]) -> set[str]:
+        """Parmi ``uids``, ceux qui sont des offres de la base (les alias n'en font pas partie)."""
+        found: set[str] = set()
+        for start in range(0, len(uids), 500):
+            chunk = uids[start : start + 500]
+            marks = ",".join("?" * len(chunk))
+            rows = self._conn.execute(
+                f"SELECT uid FROM offers WHERE uid IN ({marks})",  # noqa: S608 (marqueurs)
+                tuple(chunk),
+            ).fetchall()
+            found.update(str(r["uid"]) for r in rows)
+        return found
+
     def retained_offers(self) -> list[Offer]:
         """Toutes les offres non filtrées par radar (notifiées ou non), pour l'évaluation."""
         sql = (

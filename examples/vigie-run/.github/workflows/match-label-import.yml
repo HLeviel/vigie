@@ -1,0 +1,56 @@
+name: match-label-import
+
+# Importe les étiquettes des CSV annotés déposés dans `labels/` (interface web GitHub :
+# Add file > Upload files, sur la branche main), puis renvoie l'état vers S3.
+# Tous les fichiers `labels/*.csv` sont importés dans l'ordre alphabétique : en cas de conflit sur
+# une offre, le fichier au nom le plus tardif (labels-AAAA-MM-JJ.csv) l'emporte. Les fichiers déjà
+# importés sont rejoués à chaque exécution : leurs étiquettes écrasent celles posées autrement
+# entre-temps (par exemple en interactif). Seuls des compteurs sont affichés.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "labels/*.csv"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+# Même groupe que radar.yml : l'état S3 est lu puis réécrit, jamais par deux exécutions à la fois.
+concurrency:
+  group: radar
+  cancel-in-progress: false
+
+env:
+  # Version de Vigie : un tag du dépôt public, jamais `main` (la même que dans radar.yml).
+  VIGIE_REF: v0.3.0
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: radar
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      - name: Installer Vigie à la version épinglée
+        run: uv tool install "git+https://github.com/HLeviel/vigie@${VIGIE_REF}"
+      - name: Ajouter les outils uv au PATH
+        run: echo "$(uv tool dir --bin)" >> "$GITHUB_PATH"
+      # Aucune clé AWS stockée : jeton OIDC échangé contre le rôle limité au bucket d'état.
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Importer les étiquettes
+        if: ${{ hashFiles('labels/*.csv') != '' }}
+        shell: bash
+        run: |
+          args=()
+          for file in labels/*.csv; do args+=(--import "$file"); done
+          vigie match label --config config/radar.yaml "${args[@]}"
+        env:
+          VIGIE_STATE_BUCKET: ${{ secrets.VIGIE_STATE_BUCKET }}

@@ -1,0 +1,59 @@
+name: match-label-export
+
+# Exporte un CSV d'offres à annoter dans un tableur (Excel, LibreOffice, Numbers, Google Sheets).
+# Le fichier contient des offres réelles : il est déposé en artefact du run (conservation 1 jour),
+# visible des seuls collaborateurs de ce dépôt PRIVÉ. Aucun score ni rang n'y figure.
+# Mode d'emploi : README.md de ce dossier, section « Annoter sans environnement de développement ».
+on:
+  workflow_dispatch:
+    inputs:
+      n:
+        description: "Nombre d'offres à exporter"
+        required: false
+        default: "50"
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+# Même groupe que radar.yml : l'état S3 est lu puis réécrit, jamais par deux exécutions à la fois.
+concurrency:
+  group: radar
+  cancel-in-progress: false
+
+env:
+  # Version de Vigie : un tag du dépôt public, jamais `main` (la même que dans radar.yml).
+  VIGIE_REF: v0.3.0
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: radar
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+      - name: Installer Vigie à la version épinglée
+        run: uv tool install "git+https://github.com/HLeviel/vigie@${VIGIE_REF}"
+      - name: Ajouter les outils uv au PATH
+        run: echo "$(uv tool dir --bin)" >> "$GITHUB_PATH"
+      # Aucune clé AWS stockée : jeton OIDC échangé contre le rôle limité au bucket d'état.
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      # Le nombre passe par l'environnement, jamais dans le texte du script.
+      - name: Exporter le CSV à annoter
+        run: vigie match label --config config/radar.yaml --export "labels-$(date -u +%F).csv" --n "$N"
+        env:
+          N: ${{ inputs.n }}
+          VIGIE_STATE_BUCKET: ${{ secrets.VIGIE_STATE_BUCKET }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: labels-a-annoter
+          path: labels-*.csv
+          retention-days: 1
+          if-no-files-found: warn
