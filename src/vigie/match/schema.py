@@ -18,6 +18,17 @@ CREATE TABLE embeddings (
 );
 """
 
+# Annotations (lot M2) : une étiquette par offre et par version du profil.
+LABELS_MIGRATION = """
+CREATE TABLE labels (
+    uid TEXT NOT NULL,
+    profile_hash TEXT NOT NULL,
+    label TEXT NOT NULL,
+    labeled_at TEXT NOT NULL,
+    PRIMARY KEY (uid, profile_hash)
+);
+"""
+
 # Clé : (uid, profile_hash, stage, model, prompt_version). Étage ``hybrid`` : ``prompt_version``
 # porte la signature du réglage du scoring (poids, pénalités, k) ; étage ``llm`` (M3) : la version
 # du prompt.

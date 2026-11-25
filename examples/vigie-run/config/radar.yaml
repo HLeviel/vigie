@@ -49,3 +49,6 @@ digest:
 #   top_k_profile: 3
 #   llm: { enabled: false }
 #   digest: { min_score: 40 }
+#   evaluation:                  # `vigie match eval` : modèles comparés (2 à 3), en plus de `embeddings`
+#     candidates:
+#       - { provider: bedrock, model: "<id d'un autre modèle>" }

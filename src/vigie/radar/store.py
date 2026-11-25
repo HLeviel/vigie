@@ -11,7 +11,7 @@ from pathlib import Path
 from types import TracebackType
 from typing import Any, Self
 
-from vigie.match.schema import EMBEDDINGS_MIGRATION, SCORES_MIGRATION
+from vigie.match.schema import EMBEDDINGS_MIGRATION, LABELS_MIGRATION, SCORES_MIGRATION
 from vigie.radar.models import Offer, SourceReport
 
 DEFAULT_DB_PATH = Path.home() / ".local" / "share" / "vigie" / "radar.db"
@@ -78,6 +78,7 @@ MIGRATIONS: list[str] = [
     """,
     EMBEDDINGS_MIGRATION,
     SCORES_MIGRATION,
+    LABELS_MIGRATION,
 ]
 SCHEMA_VERSION = len(MIGRATIONS)
 
@@ -243,6 +244,26 @@ class Store:
             sql += " LIMIT ?"
             params = (limit,)
         return [self._offer_from_row(row) for row in self._conn.execute(sql, params)]
+
+    def retained_offers(self) -> list[Offer]:
+        """Toutes les offres non filtrées par radar (notifiées ou non), pour l'évaluation."""
+        sql = (
+            f"SELECT {_OFFER_COLUMNS} FROM offers "  # noqa: S608 (colonnes constantes)
+            "WHERE filtered_reason IS NULL ORDER BY uid"
+        )
+        return [self._offer_from_row(row) for row in self._conn.execute(sql)]
+
+    def offers_by_uid(self, uids: list[str]) -> list[Offer]:
+        found: list[Offer] = []
+        for start in range(0, len(uids), 500):
+            chunk = uids[start : start + 500]
+            marks = ",".join("?" * len(chunk))
+            sql = (
+                f"SELECT {_OFFER_COLUMNS} FROM offers "  # noqa: S608 (marqueurs constants)
+                f"WHERE uid IN ({marks}) ORDER BY uid"
+            )
+            found.extend(self._offer_from_row(r) for r in self._conn.execute(sql, tuple(chunk)))
+        return found
 
     def count_pending(self) -> int:
         row = self._conn.execute(

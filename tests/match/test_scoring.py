@@ -281,3 +281,9 @@ def test_build_embeds_the_profile_once_and_prunes_old_versions() -> None:
     assert emb.count() <= before  # anciens vecteurs du profil retirés
     assert [c[1] for c in fake.calls] == ["query"] * len(fake.calls)
     assert scorer.score(make_offer(), FakeEmbedder().embed(["x"], "document")[0]).score >= 0
+
+
+def test_semantic_normalization_needs_a_ceiling_above_the_floor() -> None:
+    with pytest.raises(ValueError):
+        semantic_score(0.5, floor=0.8, ceiling=0.8)
+    assert semantic_score(0.5, floor=0.2, ceiling=0.6) == pytest.approx(75.0)

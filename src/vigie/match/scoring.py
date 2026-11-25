@@ -96,10 +96,13 @@ def _dot(a: Sequence[float], b: Sequence[float]) -> float:
     return sum(x * y for x, y in zip(a, b, strict=True))
 
 
-def semantic_score(cosine: float) -> float:
-    """Cosinus ramené sur 0-100 par la normalisation fixe, borné."""
-    span = SEMANTIC_CEILING - SEMANTIC_FLOOR
-    return min(100.0, max(0.0, (cosine - SEMANTIC_FLOOR) / span * 100.0))
+def semantic_score(
+    cosine: float, floor: float = SEMANTIC_FLOOR, ceiling: float = SEMANTIC_CEILING
+) -> float:
+    """Cosinus ramené sur 0-100 par la normalisation fixe (bornes ``floor`` et ``ceiling``)."""
+    if ceiling <= floor:
+        raise ValueError("le plafond doit dépasser le plancher")
+    return min(100.0, max(0.0, (cosine - floor) / (ceiling - floor) * 100.0))
 
 
 class Scorer:
@@ -109,6 +112,9 @@ class Scorer:
         config: MatchConfig,
         texts: list[ProfileText],
         vectors: dict[str, list[float]],
+        *,
+        semantic_floor: float = SEMANTIC_FLOOR,
+        semantic_ceiling: float = SEMANTIC_CEILING,
     ) -> None:
         missing = [t.owner for t in texts if t.owner not in vectors]
         if missing:
@@ -117,6 +123,8 @@ class Scorer:
         self._config = config
         self._texts = texts
         self._vectors = [vectors[t.owner] for t in texts]
+        self._floor = semantic_floor
+        self._ceiling = semantic_ceiling
 
     @classmethod
     def build(
@@ -188,7 +196,17 @@ class Scorer:
         best = sorted(sims, reverse=True)[:k]
         closest = max(range(len(sims)), key=lambda i: sims[i])
         text = self._texts[closest]
-        return semantic_score(sum(best) / k), ClosestProfileText(kind=text.kind, index=text.index)
+        score = semantic_score(sum(best) / k, self._floor, self._ceiling)
+        return score, ClosestProfileText(kind=text.kind, index=text.index)
+
+    def semantic(self, vector: list[float]) -> float:
+        """Score sémantique seul (0-100), sans préférences ni lexical : variante d'évaluation."""
+        return self._semantic(vector)[0]
+
+    def lexical(self, offer: Offer) -> float:
+        """Score lexical seul (0-100) ; 0 si le profil ne liste aucune compétence."""
+        value = self._lexical(offer)[0]
+        return 0.0 if value is None else value
 
     def score(self, offer: Offer, vector: list[float] | None = None) -> ScoreResult:
         """Score 0-100 et explication. ``vector`` est requis sauf si l'offre est exclue."""

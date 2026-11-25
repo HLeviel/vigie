@@ -112,3 +112,35 @@ class ScoreStore:
 
     def count(self) -> int:
         return int(self._conn.execute("SELECT COUNT(*) FROM scores").fetchone()[0])
+
+
+LABELS = ("pertinent", "peut-être", "non pertinent")
+# Gain utilisé par nDCG ; ``pertinent`` seul compte comme pertinent pour precision@k et recall@k.
+LABEL_GAIN = {"pertinent": 2, "peut-être": 1, "non pertinent": 0}
+
+
+class LabelStore:
+    def __init__(self, store: Store) -> None:
+        self._conn: sqlite3.Connection = store.connection
+
+    def put(self, uid: str, profile_hash: str, label: str, now: datetime) -> None:
+        if label not in LABELS:
+            raise ValueError("étiquette inconnue")
+        self._conn.execute(
+            "INSERT OR REPLACE INTO labels (uid, profile_hash, label, labeled_at) "
+            "VALUES (?, ?, ?, ?)",
+            (uid, profile_hash, label, now.astimezone(UTC).isoformat()),
+        )
+
+    def for_profile(self, profile_hash: str) -> dict[str, str]:
+        rows = self._conn.execute(
+            "SELECT uid, label FROM labels WHERE profile_hash = ?", (profile_hash,)
+        ).fetchall()
+        return {str(r["uid"]): str(r["label"]) for r in rows}
+
+    def count_other_profiles(self, profile_hash: str) -> int:
+        """Étiquettes posées sous une autre version du profil (non utilisées)."""
+        row = self._conn.execute(
+            "SELECT COUNT(*) FROM labels WHERE profile_hash != ?", (profile_hash,)
+        ).fetchone()
+        return int(row[0])

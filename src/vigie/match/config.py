@@ -56,6 +56,15 @@ class MatchDigestConfig(_Strict):
     min_score: float = Field(default=40, ge=0, le=100)
 
 
+class EvaluationConfig(_Strict):
+    """Modèles d'embedding candidats comparés par ``vigie match eval`` (2 à 3 recommandés).
+
+    Le modèle de ``embeddings`` est toujours comparé ; cette liste s'y ajoute.
+    """
+
+    candidates: list[EmbeddingsConfig] = Field(default_factory=list, max_length=5)
+
+
 class MatchConfig(_Strict):
     enabled: bool = False
     profile: Path = Path("profile/profile.yaml")
@@ -65,3 +74,4 @@ class MatchConfig(_Strict):
     top_k_profile: int = Field(default=3, gt=0)
     llm: LlmConfig = Field(default_factory=LlmConfig)
     digest: MatchDigestConfig = Field(default_factory=MatchDigestConfig)
+    evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
