@@ -89,6 +89,14 @@ def test_version_falls_back_when_the_package_is_not_installed(
     assert vigie._read_version() == "0+inconnue"
 
 
+WHEEL_FILES = [
+    "vigie/templates/digest.html.j2",
+    "vigie/match/judge/prompt_v1.md",
+    "vigie/py.typed",
+    "vigie/radar/cli.py",
+]
+
+
 def make_wheel(directory: Path, names: list[str]) -> None:
     with zipfile.ZipFile(directory / "vigie-0.1.0-py3-none-any.whl", "w") as wheel:
         for name in names:
@@ -96,7 +104,7 @@ def make_wheel(directory: Path, names: list[str]) -> None:
 
 
 def test_wheel_with_the_template_is_accepted(tmp_path: Path) -> None:
-    make_wheel(tmp_path, ["vigie/templates/digest.html.j2", "vigie/py.typed", "vigie/radar/cli.py"])
+    make_wheel(tmp_path, WHEEL_FILES)
     assert load_script("check_wheel").check(tmp_path) is None
 
 
@@ -109,7 +117,7 @@ def test_wheel_without_the_template_is_rejected(tmp_path: Path) -> None:
 
 def test_wheel_check_needs_exactly_one_wheel(tmp_path: Path) -> None:
     assert load_script("check_wheel").check(tmp_path) is not None
-    make_wheel(tmp_path, ["vigie/templates/digest.html.j2", "vigie/py.typed", "vigie/radar/cli.py"])
+    make_wheel(tmp_path, WHEEL_FILES)
     (tmp_path / "other-0.1.0-py3-none-any.whl").write_bytes(b"")
     assert load_script("check_wheel").check(tmp_path) is not None
 
@@ -118,7 +126,7 @@ def test_main_of_check_wheel(tmp_path: Path) -> None:
     module = load_script("check_wheel")
     assert module.main(["x"]) == 2
     assert module.main(["x", str(tmp_path)]) == 1
-    make_wheel(tmp_path, ["vigie/templates/digest.html.j2", "vigie/py.typed", "vigie/radar/cli.py"])
+    make_wheel(tmp_path, WHEEL_FILES)
     assert module.main(["x", str(tmp_path)]) == 0
 
 
@@ -133,3 +141,10 @@ def test_the_wheel_force_includes_the_template_directory() -> None:
     config = tomllib.loads((ROOT / "pyproject.toml").read_text())
     include = config["tool"]["hatch"]["build"]["targets"]["wheel"]["force-include"]
     assert include == {"templates": "vigie/templates"}
+
+
+def test_a_wheel_without_the_llm_prompt_is_refused(tmp_path: Path) -> None:
+    """Sans `prompt_v1.md`, l'étage LLM échouerait en production alors que la CI serait verte."""
+    make_wheel(tmp_path, [f for f in WHEEL_FILES if not f.endswith("prompt_v1.md")])
+    error = load_script("check_wheel").check(tmp_path)
+    assert error is not None and "vigie/match/judge/prompt_v1.md" in error

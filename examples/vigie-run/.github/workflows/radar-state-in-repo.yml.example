@@ -66,6 +66,7 @@ jobs:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           DIGEST_TO: ${{ secrets.DIGEST_TO }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}  # étage LLM de match (facultatif)
         # L'état doit être conservé même si une source a échoué (codes 2, 3 ou 4), sinon des offres
         # déjà notifiées reviendraient : l'étape suivante s'exécute donc toujours.
         continue-on-error: true

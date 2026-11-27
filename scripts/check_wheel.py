@@ -8,7 +8,12 @@ import sys
 import zipfile
 from pathlib import Path
 
-REQUIRED = ("vigie/templates/digest.html.j2", "vigie/py.typed", "vigie/radar/cli.py")
+REQUIRED = (
+    "vigie/templates/digest.html.j2",
+    "vigie/match/judge/prompt_v1.md",  # prompt de l'étage LLM (lu à l'exécution)
+    "vigie/py.typed",
+    "vigie/radar/cli.py",
+)
 
 
 def check(directory: Path) -> str | None:

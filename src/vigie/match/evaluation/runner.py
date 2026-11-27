@@ -21,10 +21,13 @@ from vigie.match.evaluation.metrics import (
     rank,
     verdict,
 )
+from vigie.match.judge.base import Assessment, Judge, OfferView
+from vigie.match.llm_stage import assess_candidates, llm_key, select_candidates
 from vigie.match.profile import Profile
-from vigie.match.scoring import SEMANTIC_CEILING, SEMANTIC_FLOOR, Scorer
-from vigie.match.store import EmbeddingStore
+from vigie.match.scoring import SEMANTIC_CEILING, SEMANTIC_FLOOR, Scorer, ScoreResult
+from vigie.match.store import EmbeddingStore, ScoreStore
 from vigie.match.text import ProfileText, offer_owner, offer_text, profile_texts
+from vigie.radar.store import Store
 
 # Grille de réglage du score hybride (la valeur par défaut de chaque paramètre est testée en
 # premier : à égalité, elle est conservée).
@@ -53,6 +56,28 @@ class TimedEmbedder:
             self.texts += len(texts)
 
 
+class TimedJudge:
+    """Décore un juge pour mesurer le temps passé et le nombre d'appels."""
+
+    def __init__(self, inner: Judge) -> None:
+        self._inner = inner
+        self.name = inner.name
+        self.usage = inner.usage
+        self.last_usage = inner.last_usage
+        self.seconds = 0.0
+        self.calls = 0
+
+    def assess(self, profile: Profile, offer: OfferView) -> Assessment:
+        start = time.perf_counter()
+        try:
+            return self._inner.assess(profile, offer)
+        finally:
+            self.seconds += time.perf_counter() - start
+            self.calls += 1
+            self.usage = self._inner.usage
+            self.last_usage = self._inner.last_usage
+
+
 @dataclass(frozen=True)
 class Tuned:
     model: str  # nom du modèle retenu pour le variant hybride
@@ -72,6 +97,13 @@ class VariantResult:
     intervals: dict[str, tuple[float, float]]
     seconds_per_offer: float | None = None  # None : rien calculé pendant cette évaluation
     offers_embedded: int = 0
+    # Variantes ``hybrid+llm`` : offres évaluées par le LLM, appels et jetons de cette évaluation.
+    llm_candidates: int = 0
+    llm_assessed: int = 0  # évaluations valides (cache compris)
+    llm_calls: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    seconds_per_call: float | None = None
 
 
 @dataclass(frozen=True)
@@ -100,6 +132,7 @@ class EvalResult:
     vs_date: dict[str, dict[str, Comparison]] = field(default_factory=dict)
     targeted: list[Comparison] = field(default_factory=list)
     draws: int = 1000
+    notes: list[str] = field(default_factory=list)  # variantes ignorées, budget atteint...
 
 
 def _embed_all(
@@ -142,8 +175,14 @@ def evaluate(
     *,
     draws: int = 1000,
     now: datetime | None = None,
+    judges: list[Judge] | None = None,
+    db: Store | None = None,
 ) -> EvalResult:
+    """``judges`` : juges LLM comparés (un variant ``hybrid+llm:<modèle>`` chacun) ; ``db`` est
+    alors obligatoire (cache des évaluations et jetons consommés)."""
     when = now or datetime.now(UTC)
+    if judges and db is None:
+        raise ValueError("la base est requise pour évaluer l'étage LLM")
     tuning_items, measure_items = split(items)
     if not tuning_items or not measure_items:
         raise ValueError("jeu trop petit pour être découpé en réglage et mesure")
@@ -196,7 +235,17 @@ def evaluate(
         scores[f"emb:{t.name}"] = {
             i.uid: sem.semantic(embedded[t.name][1][i.uid]) for i in measure_items
         }
-    scores[f"hybrid:{best.name}"] = _hybrid(hybrid_scorer, measure_items, embedded[best.name][1])
+    hybrid_results = {
+        i.uid: hybrid_scorer.score(i.offer, embedded[best.name][1][i.uid]) for i in measure_items
+    }
+    scores[f"hybrid:{best.name}"] = {uid: r.score for uid, r in hybrid_results.items()}
+    notes: list[str] = []
+    llm_stats: dict[str, VariantResult] = {}
+    for judge in judges or []:
+        _add_llm_variant(
+            judge, profile, config, measure_items, hybrid_results, scores, llm_stats, notes,
+            db, when,
+        )  # fmt: skip
 
     gains = {i.uid: i.gain for i in measure_items}
     rankings = {name: rank(s, list(gains)) for name, s in scores.items()}
@@ -206,6 +255,7 @@ def evaluate(
     for name, ranking in rankings.items():
         embedder = next((t for t in timed if name == f"emb:{t.name}"), None)
         per_offer = embedder.seconds / embedder.texts if embedder and embedder.texts else None
+        llm = llm_stats.get(name)
         results.append(
             VariantResult(
                 name=name,
@@ -213,6 +263,12 @@ def evaluate(
                 intervals={m: boot.interval(name, m) for m in boot.samples[name]},
                 seconds_per_offer=per_offer,
                 offers_embedded=embedder.texts if embedder else 0,
+                llm_candidates=llm.llm_candidates if llm else 0,
+                llm_assessed=llm.llm_assessed if llm else 0,
+                llm_calls=llm.llm_calls if llm else 0,
+                prompt_tokens=llm.prompt_tokens if llm else 0,
+                completion_tokens=llm.completion_tokens if llm else 0,
+                seconds_per_call=llm.seconds_per_call if llm else None,
             )
         )
 
@@ -237,6 +293,9 @@ def evaluate(
         )
         for m in PRIMARY
     ]
+    targeted += [  # chaque étage doit prouver un gain sur le précédent : LLM contre hybride
+        compare(name, hybrid_name, m) for name in llm_stats for m in PRIMARY
+    ]
     return EvalResult(
         generated_at=when,
         profile_hash=profile.profile_hash,
@@ -248,4 +307,54 @@ def evaluate(
         vs_date=vs_date,
         targeted=targeted,
         draws=draws,
+        notes=notes,
+    )
+
+
+def _add_llm_variant(
+    judge: Judge,
+    profile: Profile,
+    config: MatchConfig,
+    measure_items: list[EvalItem],
+    hybrid_results: dict[str, ScoreResult],
+    scores: dict[str, dict[str, float]],
+    llm_stats: dict[str, VariantResult],
+    notes: list[str],
+    db: Store | None,
+    now: datetime,
+) -> None:
+    """Variante ``hybrid+llm:<modèle>`` : le LLM réévalue les ``top_n`` meilleures offres hybrides
+    éligibles de la partie de mesure ; les autres gardent leur score hybride."""
+    assert db is not None  # noqa: S101 (vérifié par l'appelant)
+    model = judge.name.split(":", 1)[1]
+    name = f"hybrid+llm:{model}"
+    timed = TimedJudge(judge)
+    offers = [i.offer for i in measure_items]
+    hybrid = {uid: (r.score, r.details.model_dump_json()) for uid, r in hybrid_results.items()}
+    candidates = select_candidates(offers, hybrid, config.llm.top_n)
+    llm_cfg = config.llm.model_copy(update={"model": model})
+    key = llm_key(llm_cfg, profile)
+    report = assess_candidates(
+        candidates, timed, profile, llm_cfg, key, db, f"eval-{now:%Y%m%d}", now
+    )
+    if report.failed:
+        notes.append(f"{name} ignorée : {report.error_message}")
+        return
+    if report.budget_reached:
+        notes.append(f"{name} : budget atteint, certaines offres gardent leur score hybride")
+    final = dict(scores[next(n for n in scores if n.startswith("hybrid:"))])
+    stored = ScoreStore(db).get_many([offer.uid for offer, _ in candidates], key)
+    for uid, (score, _) in stored.items():
+        final[uid] = score
+    scores[name] = final
+    llm_stats[name] = VariantResult(
+        name=name,
+        metrics={},
+        intervals={},
+        llm_candidates=report.candidates,
+        llm_assessed=len(stored),
+        llm_calls=report.calls,
+        prompt_tokens=report.prompt_tokens,
+        completion_tokens=report.completion_tokens,
+        seconds_per_call=timed.seconds / timed.calls if timed.calls else None,
     )

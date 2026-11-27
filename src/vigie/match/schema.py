@@ -45,3 +45,20 @@ CREATE TABLE scores (
     PRIMARY KEY (uid, profile_hash, stage, model, prompt_version)
 );
 """
+
+# Un enregistrement par appel au juge (réponses invalides et échecs compris) : jetons d'entrée et de
+# sortie renvoyés par l'API, jamais le texte envoyé ni la réponse. ``outcome`` : ok, invalid, error.
+LLM_CALLS_MIGRATION = """
+CREATE TABLE llm_calls (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id TEXT NOT NULL,
+    uid TEXT NOT NULL,
+    model TEXT NOT NULL,
+    prompt_version TEXT NOT NULL,
+    prompt_tokens INTEGER NOT NULL,
+    completion_tokens INTEGER NOT NULL,
+    outcome TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX idx_llm_calls_run ON llm_calls (run_id);
+"""

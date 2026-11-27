@@ -336,7 +336,7 @@ def test_report_warns_when_the_dataset_is_below_the_goal(default_eval) -> None: 
     _, result = default_eval
     text = render_markdown(result)
     assert "Jeu insuffisant" in text and "150" in text and "30" in text
-    assert "hybrid+llm" in text and "lot M3" in text
+    assert "hybrid+llm" in text and "OpenRouter" in text
     assert "non significatif" in text or "gain" in text
 
 

@@ -1,7 +1,7 @@
 """Fabriques et sources factices partagées par les tests."""
 
 from collections.abc import Callable, Iterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from vigie.radar.config import RadarConfig, load_config_text
@@ -23,7 +23,9 @@ def make_offer(**overrides: Any) -> Offer:
         "department": "69",
         "description": "Pipelines Python et data.",
         "url": "https://example.org/offre/1",
-        "published_at": datetime(2026, 11, 19, 8, 0, tzinfo=UTC),
+        # relative à l'horloge réelle : le pipeline filtre l'ancienneté avec la vraie date, un
+        # jeu de tests daté en dur finirait par être « trop vieux » (max_age_days)
+        "published_at": datetime.now(UTC).replace(microsecond=0) - timedelta(hours=18),
         "fetched_at": NOW,
     }
     data.update(overrides)

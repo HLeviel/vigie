@@ -78,3 +78,6 @@ jobs:
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           DIGEST_TO: ${{ secrets.DIGEST_TO }}
           VIGIE_STATE_BUCKET: ${{ secrets.VIGIE_STATE_BUCKET }}
+          # Étage LLM de match (OpenRouter) : seulement si match.llm.enabled ; le modèle se choisit
+          # dans config/radar.yaml (match.llm.model), jamais ici.
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}

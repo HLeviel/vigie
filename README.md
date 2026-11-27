@@ -49,7 +49,7 @@ Spécifications : module `radar` : [`docs/specs/radar.md`](docs/specs/radar.md) 
 | Module | Rôle | Statut |
 |---|---|---|
 | `radar` | Veille quotidienne des offres, sans LLM | Lots M1 et M2 implémentés ; exécution réelle vérifiée le 24/11/2026 (dépôt privé `vigie-run`, digest reçu, état S3 relu à l'exécution suivante). Alertes email : France Travail vérifié, APEC, WTTJ et LinkedIn non (#16). API France Travail : en attente d'accès (#19) |
-| `match` | Score offre/profil en étages (règles, embeddings, LLM), évaluation precision@k | En cours : étapes 1 à 6 bis : profil, `vigie match check`, score hybride explicable, fournisseurs d'embeddings `local` et `bedrock`, intégré à `radar run` et au digest (tri par score, code de sortie 6), annotation (`vigie match label`, en interactif ou par fichier CSV dans un tableur, avec trois workflows pour `vigie-run`) et évaluation (`vigie match eval`, rapport Markdown + SVG). Jamais exécuté pour de vrai : aucune offre réelle n'est encore annotée, donc aucun rapport réel ; fournisseurs testés avec des doubles. L'étage LLM (lot M3) reste à faire |
+| `match` | Score offre/profil en étages (règles, embeddings, LLM), évaluation precision@k | En cours : étapes 1 à 8 : profil, `vigie match check`, score hybride explicable, fournisseurs d'embeddings `local` et `bedrock`, intégré à `radar run` et au digest (tri par score, code de sortie 6), annotation (`vigie match label`, en interactif ou par fichier CSV dans un tableur, avec trois workflows pour `vigie-run`) et évaluation (`vigie match eval`, rapport Markdown + SVG). Jamais exécuté pour de vrai : aucune offre réelle n'est encore annotée, donc aucun rapport réel ; fournisseurs testés avec des doubles. L'étage LLM (réévaluation des meilleures offres via OpenRouter, modèle choisi par la configuration) est écrit et testé avec un faux serveur mais **n'a jamais été exécuté contre le vrai service** et n'est pas évalué : il reste désactivé tant que `hybrid+llm` n'a pas prouvé un gain |
 | `cv` | CV et lettre adaptés, packagés en Agent Skill | Prévu |
 | `agent` | Agent LangChain, validation humaine avant action | Prévu |
 
@@ -110,6 +110,8 @@ Codes de sortie de `run` : `0` succès, `1` erreur de configuration ou de secret
 ## Données personnelles
 
 Le dépôt public utilise uniquement un **profil fictif**. Le vrai CV et les digests restent privés et ne sont jamais committés.
+
+**Étage LLM (optionnel, désactivé par défaut)** : quand il est activé dans `vigie-run`, une version nettoyée du profil (sans noms d'entreprise ni dates) et le texte des offres évaluées transitent par **OpenRouter** puis par le fournisseur du modèle choisi. Chaque requête demande `data_collection: "deny"` ; vérifie aussi les réglages de confidentialité de ton compte OpenRouter et la politique du fournisseur avant activation.
 
 ## Compétences mises en œuvre
 

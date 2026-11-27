@@ -5,7 +5,7 @@ l'évaluation (M2) n'en a pas fixé un, ``embeddings.model`` est obligatoire.
 """
 
 from pathlib import Path
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -36,14 +36,23 @@ class PenaltiesConfig(_Strict):
     avoid: float = Field(default=20, ge=0, le=100)
 
 
+# Identifiant OpenRouter : « fournisseur/modèle » (par exemple « anthropic/… » ou « openai/… »).
+# Aucun identifiant n'est écrit dans le code : il se change dans la configuration.
+_MODEL_ID = r"^[^/\s]+/\S+$"
+
+
 class LlmConfig(_Strict):
-    """Étage LLM (lot M3, pas encore implémenté) : le schéma est déjà accepté."""
+    """Étage LLM (lot M3) : OpenRouter, modèle choisi par la configuration."""
 
     enabled: bool = False
-    provider: Literal["anthropic", "bedrock"] = "anthropic"
-    model: str | None = Field(default=None, min_length=1)
+    provider: Literal["openrouter"] = "openrouter"
+    model: str | None = Field(default=None, pattern=_MODEL_ID)
+    temperature: float = Field(default=0.0, ge=0, le=2)
+    max_tokens: int = Field(default=800, gt=0)  # par appel
     top_n: int = Field(default=10, gt=0)
     max_calls_per_run: int = Field(default=15, gt=0)
+    # Budget de jetons (entrée + sortie) par exécution : l'étage s'arrête proprement au-delà.
+    max_total_tokens_per_run: int = Field(default=60_000, gt=0)
 
     @model_validator(mode="after")
     def _model_required_when_enabled(self) -> Self:
@@ -63,6 +72,11 @@ class EvaluationConfig(_Strict):
     """
 
     candidates: list[EmbeddingsConfig] = Field(default_factory=list, max_length=5)
+    # Modèles OpenRouter comparés pour les variantes `hybrid+llm:<modèle>` (au moins deux
+    # recommandés), en plus de `llm.model`.
+    llm_models: list[Annotated[str, Field(pattern=_MODEL_ID)]] = Field(
+        default_factory=list, max_length=5
+    )
 
 
 class MatchConfig(_Strict):

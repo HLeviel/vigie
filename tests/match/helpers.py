@@ -1,6 +1,6 @@
 """Éléments communs aux tests d'intégration de ``match`` (profil fictif, configuration, offres)."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +29,11 @@ def match_config(profile: Path, extra: str = LEXICAL_ONLY) -> MatchConfig:
     return cfg
 
 
+def _ago(days: int) -> datetime:
+    """Date relative à l'horloge réelle (voir ``tests/radar/factories.py``)."""
+    return datetime.now(UTC).replace(microsecond=0) - timedelta(days=days)
+
+
 def make_offers() -> list[Offer]:
     """A : très pertinente ; B : un peu ; C : hors sujet ; D : contrat CDD, donc exclue."""
     return [
@@ -36,26 +41,26 @@ def make_offers() -> list[Offer]:
             source_id="A",
             title="Ingénieur IA",
             description="python sql rag amazon web services langchain " * 10,
-            published_at=datetime(2026, 11, 20, tzinfo=UTC),
+            published_at=_ago(4),
         ),
         make_offer(
             source_id="B",
             title="Développeur",
             description="python " * 60,
-            published_at=datetime(2026, 11, 22, tzinfo=UTC),
+            published_at=_ago(2),
         ),
         make_offer(
             source_id="C",
             title="Comptable",
             description="comptabilité " * 40,
-            published_at=datetime(2026, 11, 23, tzinfo=UTC),
+            published_at=_ago(1),
         ),
         make_offer(
             source_id="D",
             title="Data python",
             description="python sql " * 40,
             contract_type="CDD",
-            published_at=datetime(2026, 11, 21, tzinfo=UTC),
+            published_at=_ago(3),
         ),
     ]
 

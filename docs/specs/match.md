@@ -1,6 +1,6 @@
 # Spécification : module `vigie/match`
 
-> Version 1.1, 25 novembre 2026 (voir le journal des modifications). Document destiné à l'implémentation par Claude Code. Emplacement : `docs/specs/match.md`.
+> Version 1.2, 27 novembre 2026 (voir le journal des modifications). Document destiné à l'implémentation par Claude Code. Emplacement : `docs/specs/match.md`.
 > Prérequis : `docs/specs/radar.md` (1.5). Les règles transverses de `radar` s'appliquent ici sauf mention contraire : secrets (section 7), confidentialité, fixtures fictives, décisions hors spec (section 18).
 > En cas d'ambiguïté, ou si un modèle ou une API ne se comporte pas comme décrit, **s'arrêter et poser la question** plutôt que deviner.
 
@@ -138,14 +138,15 @@ class Judge(Protocol):  # M3
 - `local` : modèle téléchargé une fois et mis en cache ; dans `vigie-run`, le cache Actions est acceptable ici (un modèle se retélécharge sans perte de données).
 - `bedrock` : le rôle IAM de `vigie-run` reçoit `bedrock:InvokeModel` sur les **seuls ARN des modèles utilisés**.
 
-### LLM (M3)
-| Fournisseur | Authentification |
-|---|---|
-| `anthropic` | secret `ANTHROPIC_API_KEY` |
-| `bedrock` | OIDC existant, `bedrock:InvokeModel` sur l'ARN du modèle |
-
-- Modèle, température (0 par défaut) et version du prompt dans la configuration ; le prompt est un fichier versionné du dépôt public (il ne contient aucune donnée personnelle).
-- **Données envoyées** : profil et offres partent chez le fournisseur choisi. Le README le signale ; vérifier la politique de conservation des données du fournisseur avant activation.
+### LLM (M3) : OpenRouter
+Un seul fournisseur, **OpenRouter**, pour pouvoir **changer de modèle par simple configuration**, sans modifier le code (une seule clé d'API pour tous les modèles). L'interface `Judge` reste générique : un autre fournisseur pourra s'ajouter plus tard.
+- Appel : `POST https://openrouter.ai/api/v1/chat/completions` (format compatible OpenAI), clé dans le secret `OPENROUTER_API_KEY`, client HTTP commun de `radar` (timeouts, retries, en-tête `Authorization` masqué).
+- **Modèle** : identifiant OpenRouter libre dans la configuration (forme `fournisseur/modèle`, par exemple `anthropic/…` ou `openai/…`). Aucun identifiant de modèle n'est écrit dans le code ; `vigie match check` refuse une configuration LLM activée sans modèle.
+- **Sortie structurée** : `response_format` de type `json_schema` en mode strict, schéma généré depuis le modèle pydantic de `Assessment`, et `provider.require_parameters: true` pour que la requête ne parte que vers un fournisseur qui respecte le schéma. Si le modèle choisi ne le permet pas, OpenRouter renvoie une erreur : l'étage LLM est alors ignoré pour l'exécution (score hybride conservé), avec un message clair qui nomme le paramètre en cause, jamais l'offre.
+- **Confidentialité** : `provider.data_collection: "deny"` dans chaque requête, pour exclure les fournisseurs qui conservent ou réutilisent les données. Vérifier aussi les réglages de confidentialité du compte OpenRouter avant activation. Le README signale que le profil et les offres envoyés au LLM transitent par OpenRouter puis par le fournisseur du modèle.
+- **Coût** : `max_tokens` fixé par la configuration ; l'usage renvoyé par l'API (jetons d'entrée et de sortie) est enregistré par appel et totalisé dans le rapport d'exécution (compteurs seulement). Le budget de la section 4 s'applique.
+- Température 0 par défaut ; prompt versionné dans le dépôt public (sans donnée personnelle).
+- **Changer de modèle** : modifier `match.llm.model` dans la configuration de `vigie-run`. Le cache (section 4) inclut l'identifiant du modèle : les offres sont réévaluées avec le nouveau modèle, les anciens scores restent en base pour comparaison.
 
 ## 6. Configuration
 
@@ -162,8 +163,10 @@ match:
   top_k_profile: 3
   llm:                         # M3
     enabled: false
-    provider: anthropic        # anthropic ou bedrock
-    model: "<id du modèle>"
+    provider: openrouter
+    model: "<fournisseur>/<modèle>"   # identifiant OpenRouter, modifiable à tout moment
+    temperature: 0
+    max_tokens: 800            # par appel
     top_n: 10
     max_calls_per_run: 15
   digest:
@@ -173,9 +176,9 @@ match:
 ### Secrets ajoutés
 | Variable | Usage | Lot |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | étage LLM avec le fournisseur `anthropic` | M3 |
+| `OPENROUTER_API_KEY` | étage LLM (OpenRouter) | M3 |
 
-Bedrock n'ajoute aucun secret (OIDC). `settings.py` reste le seul lecteur des variables d'environnement ; `REQUIRED_BY_FEATURE` reçoit `llm_anthropic`.
+Les embeddings Bedrock n'ajoutent aucun secret (OIDC). `settings.py` reste le seul lecteur des variables d'environnement ; `REQUIRED_BY_FEATURE` reçoit `llm_openrouter`.
 
 ## 7. Stockage
 
@@ -235,7 +238,7 @@ Pour annoter sans rien installer, le modèle `examples/vigie-run/` fournit trois
 | `baseline:tfidf` | similarité TF-IDF profil/offre, sans embeddings |
 | `emb:<fournisseur>:<modèle>` | score sémantique seul, un par modèle candidat (2 à 3 modèles) |
 | `hybrid:<modèle>` | score hybride avec le meilleur modèle |
-| `hybrid+llm:<modèle>` | M3 : étage LLM sur les N meilleures |
+| `hybrid+llm:<modèle OpenRouter>` | M3 : étage LLM sur les N meilleures ; plusieurs modèles comparables en changeant seulement la configuration |
 
 ### Métriques
 - `precision@5`, `precision@10`, `nDCG@10` (gain : pertinent = 2, peut-être = 1), `recall@20`.
@@ -274,7 +277,7 @@ src/vigie/match/
 ├── text.py             # préparation des textes offre et profil
 ├── embedders/          # base.py, local.py, bedrock.py
 ├── scoring.py          # étages 0 et 1, explication
-├── judge/              # M3 : base.py, anthropic.py, bedrock.py, prompt_v1.md
+├── judge/              # M3 : base.py, openrouter.py, prompt_v1.md
 ├── store.py            # tables embeddings, scores, labels
 ├── evaluation/         # M2 : dataset.py, metrics.py, variants.py, report.py
 └── cli.py
@@ -292,7 +295,7 @@ docs/eval/              # rapports d'évaluation publiés (agrégats seulement)
 - Évaluation : métriques vérifiées sur des cas calculés à la main ; découpage reproductible ; rapport sans titre ni entreprise (test qui le vérifie).
 - CSV d'annotation : aller-retour export puis import ; BOM et séparateur ; absence de score ; neutralisation des formules (`=`, `+`, `-`, `@`) ; étiquettes acceptées et refusées ; `uid` inconnu ; colonnes modifiées sans effet ; messages d'erreur sans contenu d'offre.
 - Workflows d'annotation du modèle : contrôles statiques (déclencheurs, artefact à conservation courte, `concurrency` partagé, aucun `echo` de contenu).
-- LLM (M3) : schéma de sortie, réponse invalide, cache, budget, offres hostiles, offre `suspicious` jamais envoyée.
+- LLM (M3), avec un faux serveur OpenRouter (`respx`) : corps de requête (modèle lu dans la configuration, `response_format` strict, `require_parameters`, `data_collection: "deny"`), schéma de sortie, réponse invalide, refus du paramètre par le modèle (étage ignoré, score hybride conservé), usage enregistré, cache incluant le modèle, budget, offres hostiles, offre `suspicious` jamais envoyée, clé jamais journalisée.
 - Couverture visée : 85 % sur `src/vigie/match`.
 
 ## 13. Critères d'acceptation
@@ -315,6 +318,7 @@ docs/eval/              # rapports d'évaluation publiés (agrégats seulement)
 - [ ] Étage LLM évalué contre `hybrid` ; activé par défaut seulement si le gain dépasse l'intervalle de confiance.
 - [ ] Tests d'injection verts ; aucune offre `suspicious` envoyée au LLM.
 - [ ] Coût par exécution mesuré et borné par la configuration.
+- [ ] Changement de modèle en modifiant seulement la configuration de `vigie-run`, sans PR dans le dépôt public.
 
 ## 14. Ordre d'implémentation suggéré
 
@@ -326,11 +330,12 @@ docs/eval/              # rapports d'évaluation publiés (agrégats seulement)
 6. M2 : `label`, jeu de données, métriques, variantes, rapport (fait).
 6 bis. M2 : export et import CSV, workflows `match-label-export.yml`, `match-label-import.yml` et `match-eval.yml` dans `examples/vigie-run/` ; premier rapport réel.
 7. Mise à jour de la spec avec les choix issus de l'évaluation.
-8. M3 : `Judge`, prompt versionné, protections, cache et budget ; évaluation `hybrid+llm`.
+8. M3 : interface `Judge` et fournisseur OpenRouter (modèle choisi par la configuration), prompt versionné, sortie structurée stricte, protections, cache et budget ; secret `OPENROUTER_API_KEY` documenté dans `examples/vigie-run/` ; évaluation `hybrid+llm` sur au moins deux modèles OpenRouter.
 
 Livrer par petites PR, une étape par PR, chacune avec ses tests ; décisions hors spec dans la description de la PR (section 18 de `radar`).
 
 ## Journal des modifications
 
+- **1.2 (27/11/2026)** : étage LLM via OpenRouter au lieu d'Anthropic ou Bedrock ; modèle choisi par la configuration, jamais écrit dans le code ; sortie structurée stricte avec `require_parameters`, `data_collection: "deny"`, suivi de l'usage ; secret `OPENROUTER_API_KEY` ; évaluation sur plusieurs modèles.
 - **1.1 (25/11/2026)** : annotation par fichier CSV (export, tableur, import) et workflows d'annotation et d'évaluation dans `vigie-run`, pour annoter sans environnement de développement ; protection contre l'injection de formules ; aucun score dans le fichier à annoter.
 - **1.0 (24/11/2026)** : version initiale.

@@ -184,6 +184,7 @@ Settings > Environments > New environment : `radar`.
 | `IMAP_HOST`, `IMAP_USER`, `IMAP_PASSWORD`, `IMAP_FOLDER` | Boîte des alertes (mot de passe d'application) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `DIGEST_TO` | Envoi du digest (`DIGEST_TO` : une ou plusieurs adresses séparées par des virgules) |
 | `VIGIE_STATE_BUCKET` | Nom du bucket |
+| `OPENROUTER_API_KEY` | Clé OpenRouter, **seulement** pour l'étage LLM du module `match` (section 8) |
 
 Il n'y a **pas** de secret pour la configuration : `config/radar.yaml` est un fichier du dépôt privé.
 
@@ -241,6 +242,60 @@ l'évaluation, réécrivent) l'état S3 comme `radar run`, avec le même `concur
 Les CSV et les artefacts contiennent des offres réelles : ne les commite jamais dans le dépôt public.
 Annotations conservées : elles ne dépendent pas de la version du profil ; réannote seulement à la
 demande (`vigie match label --relabel --export …`).
+
+## 8. Étage LLM du module `match` (OpenRouter)
+
+Après le score hybride, un LLM peut réévaluer les `N` meilleures offres (note de 0 à 100,
+recommandation `postuler`, `à voir` ou `passer`, points forts, écarts, risques). Il passe par
+**OpenRouter** : une seule clé pour tous les modèles, et le modèle se choisit **dans la
+configuration**, sans toucher au code.
+
+1. Créer un compte OpenRouter, une clé d'API et provisionner des crédits ; ajouter la clé comme
+   **secret de l'environnement `radar`** sous le nom `OPENROUTER_API_KEY` (comme les autres secrets,
+   section 4). `radar.yml` ne l'expose qu'à l'étape `vigie radar run`, `match-eval.yml` qu'à l'évaluation.
+2. Dans `config/radar.yaml`, choisir le modèle (identifiant OpenRouter `fournisseur/modèle`, à lire
+   sur openrouter.ai) et activer l'étage. Aucun modèle n'est imposé :
+
+```yaml
+match:
+  llm:
+    enabled: true
+    model: "<fournisseur>/<modèle>"   # modifiable à tout moment
+    temperature: 0
+    max_tokens: 800                    # par appel
+    top_n: 10                          # offres réévaluées par exécution
+    max_calls_per_run: 15              # budget d'appels (nouvelles tentatives comprises)
+    max_total_tokens_per_run: 60000    # budget de jetons (entrée + sortie)
+```
+
+3. **Changer de modèle** : modifier `match.llm.model` ici, dans `vigie-run`, sans aucune PR dans le dépôt
+   public. Le cache des évaluations inclut l'identifiant du modèle : les offres encore à notifier sont
+   réévaluées avec le nouveau modèle, les anciens scores restent en base pour comparaison.
+
+**Ce qui part chez OpenRouter, puis chez le fournisseur du modèle** : une version nettoyée de ton
+profil (résumé, rôles cibles, compétences, titres, descriptions et compétences des expériences, préférences ;
+**sans noms d'entreprise ni dates**) et, pour chaque offre évaluée, son titre, son entreprise, son lieu, son
+contrat, son salaire et sa description (nettoyée, bornée à 6 000 caractères). Pas de lien, pas d'identifiant,
+pas de coordonnées. Chaque requête demande `provider.data_collection: "deny"` (exclut les fournisseurs
+qui conservent ou réutilisent les données) et `provider.require_parameters: true` (n'utilise qu'un
+fournisseur qui respecte le schéma de sortie). **Vérifie aussi les réglages de confidentialité de ton
+compte OpenRouter avant d'activer l'étage** : cette option ne les remplace pas.
+
+**Coût et limites** : chaque offre évaluée coûte un appel (deux au plus avec la nouvelle tentative). Le budget
+d'appels et de jetons arrête l'étage proprement (message « budget atteint », les offres restantes gardent
+leur score hybride). Le rapport d'exécution et le pied du digest ne contiennent que des compteurs
+(candidates, évaluées, en cache, invalides, appels, jetons). Le tarif d'un modèle n'est pas calculé : il se lit
+chez OpenRouter.
+
+**En cas de panne** (clé refusée, crédits épuisés, modèle qui ne gère pas la sortie structurée stricte ou
+`data_collection: "deny"`, réseau) : l'étage est ignoré pour l'exécution, les offres restent triées par score
+hybride, le digest part avec une mention, et `radar run` sort en **code 6**. Le message de la console nomme
+la cause (code HTTP et paramètres exigés), jamais une offre. Avec un autre modèle, relancer.
+
+> Cet étage n'a jamais été exécuté contre le vrai service : la forme des requêtes et des réponses suit la
+> documentation d'OpenRouter, mais le code HTTP renvoyé quand aucun fournisseur ne convient n'y est pas
+> précisé. Ne l'active par défaut que si l'évaluation (`match-eval.yml`, au moins deux modèles via
+> `match.evaluation.llm_models`) montre un gain de `hybrid+llm` sur `hybrid`.
 
 ## Repli sans S3
 

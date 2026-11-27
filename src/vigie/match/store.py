@@ -70,6 +70,9 @@ class ScoringKey:
     signature: str  # réglage du scoring (voir ``scoring.scoring_signature``)
     min_score: float = 0.0  # seuil d'affichage du digest (ne fait pas partie de la clé stockée)
     stage: str = "hybrid"
+    # Clé de l'étage LLM (``stage="llm"``, ``model`` = identifiant OpenRouter, ``signature`` =
+    # version du prompt) quand il est activé : le score final en vient s'il existe.
+    llm: "ScoringKey | None" = None
 
 
 class ScoreStore:
@@ -153,3 +156,45 @@ class LabelStore:
             "SELECT COUNT(*) FROM labels WHERE profile_hash != ?", (profile_hash,)
         ).fetchone()
         return int(row[0])
+
+
+class LlmCallStore:
+    """Un enregistrement par appel au juge : jetons seulement, jamais de texte."""
+
+    def __init__(self, store: Store) -> None:
+        self._conn: sqlite3.Connection = store.connection
+
+    def add(
+        self,
+        run_id: str,
+        uid: str,
+        model: str,
+        prompt_version: str,
+        prompt_tokens: int,
+        completion_tokens: int,
+        outcome: str,
+        now: datetime,
+    ) -> None:
+        self._conn.execute(
+            "INSERT INTO llm_calls (run_id, uid, model, prompt_version, prompt_tokens, "
+            "completion_tokens, outcome, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                run_id,
+                uid,
+                model,
+                prompt_version,
+                prompt_tokens,
+                completion_tokens,
+                outcome,
+                now.astimezone(UTC).isoformat(),
+            ),
+        )
+
+    def totals(self, run_id: str) -> tuple[int, int, int]:
+        """(appels, jetons d'entrée, jetons de sortie) d'une exécution."""
+        row = self._conn.execute(
+            "SELECT COUNT(*), COALESCE(SUM(prompt_tokens), 0), COALESCE(SUM(completion_tokens), 0) "
+            "FROM llm_calls WHERE run_id = ?",
+            (run_id,),
+        ).fetchone()
+        return int(row[0]), int(row[1]), int(row[2])

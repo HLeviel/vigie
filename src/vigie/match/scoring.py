@@ -59,6 +59,7 @@ class ScoreDetails(BaseModel):
     missing_must_have: list[str] = []
     closest_profile_text: ClosestProfileText | None = None
     confidence: Confidence = "normale"
+    suspicious: bool = False  # offre signalée par radar : jamais envoyée au LLM
 
 
 class ScoreResult(BaseModel):
@@ -216,7 +217,11 @@ class Scorer:
             return ScoreResult(
                 score=0.0,
                 details=ScoreDetails(
-                    excluded=True, reasons=excluded, penalties={}, confidence=confidence
+                    excluded=True,
+                    reasons=excluded,
+                    penalties={},
+                    confidence=confidence,
+                    suspicious=offer.suspicious,
                 ),
             )
         if vector is None or len(vector) != len(self._vectors[0]):
@@ -244,6 +249,7 @@ class Scorer:
                 missing_must_have=missing,
                 closest_profile_text=closest,
                 confidence=confidence,
+                suspicious=offer.suspicious,
             ),
         )
 

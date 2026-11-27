@@ -416,7 +416,7 @@ def test_annotation_secrets_only_reach_the_vigie_step_and_inputs_never_reach_scr
     [job] = workflow["jobs"].values()
     exposed = [s for s in job["steps"] if "secrets." in json.dumps(s)]
     assert len(exposed) == 1 and "vigie match " in exposed[0]["run"]
-    assert set(exposed[0]["env"]) <= {"N", "VIGIE_STATE_BUCKET"}
+    assert set(exposed[0]["env"]) <= {"N", "VIGIE_STATE_BUCKET", "OPENROUTER_API_KEY"}
     assert exposed[0]["env"]["VIGIE_STATE_BUCKET"] == "${{ secrets.VIGIE_STATE_BUCKET }}"
     for command in annotation_runs(name):  # une entrée utilisateur n'est jamais dans un script
         assert "${{" not in command and "github.event" not in command
@@ -506,3 +506,35 @@ def test_model_readme_documents_the_annotation_flow() -> None:
         "`p` ou `pertinent`",
     ):
         assert needle in text, needle
+
+
+def test_openrouter_key_only_reaches_the_steps_that_call_the_llm() -> None:
+    """La clé est un secret de plus : exposée aux seules étapes `vigie radar run` et
+    `vigie match eval` (jamais à un workflow qui n'appelle pas le LLM, ni au job entier)."""
+    for name in ("radar.yml", "match-eval.yml", "radar-state-in-repo.yml.example"):
+        workflow = load(MODEL_WORKFLOWS / name)
+        [job] = workflow["jobs"].values()
+        assert "env" not in job and "OPENROUTER_API_KEY" not in workflow.get("env", {})
+        holders = [s for s in job["steps"] if "OPENROUTER_API_KEY" in s.get("env", {})]
+        assert len(holders) == 1, name
+        assert holders[0]["env"]["OPENROUTER_API_KEY"] == "${{ secrets.OPENROUTER_API_KEY }}"
+        assert holders[0]["run"].startswith(("vigie radar run", "mkdir eval && vigie match eval"))
+    for name in ("match-label-export.yml", "match-label-import.yml"):
+        assert "OPENROUTER" not in (MODEL_WORKFLOWS / name).read_text()
+    assert "openrouter_api_key" in Settings.model_fields  # nom de secret = champ de settings.py
+
+
+def test_model_readme_documents_the_llm_stage_and_its_privacy() -> None:
+    text = (MODEL / "README.md").read_text()
+    for needle in (
+        "OPENROUTER_API_KEY",
+        "match.llm.model",
+        'data_collection: "deny"',
+        "require_parameters",
+        "sans aucune PR dans le dépôt",
+        "code 6",
+        "sans noms d'entreprise ni dates",
+    ):
+        assert needle in text, needle
+    # aucun identifiant de modèle réel dans la documentation du modèle de dépôt
+    assert "<fournisseur>/<modèle>" in text
