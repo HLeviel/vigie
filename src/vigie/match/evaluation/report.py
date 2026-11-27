@@ -92,6 +92,8 @@ def render_markdown(result: EvalResult, svg_name: str | None = None) -> str:
         "|---|---|---|",
     ]
     for r in result.variants:
+        if r.name.startswith("hybrid+llm:"):
+            continue  # section « Étage LLM » ci-dessous
         if r.name.startswith("emb:"):
             seconds = (
                 f"{r.seconds_per_offer * 1000:.1f} ms"
@@ -101,15 +103,46 @@ def render_markdown(result: EvalResult, svg_name: str | None = None) -> str:
             lines.append(f"| `{r.name}` | {seconds} | {r.offers_embedded} |")
         else:
             lines.append(f"| `{r.name}` | négligeable (sans fournisseur) | 0 |")
+    llm_rows = [r for r in result.variants if r.name.startswith("hybrid+llm:")]
+    if llm_rows:
+        lines += [
+            "",
+            "## Étage LLM (jetons et temps)",
+            "",
+            "| Variante | Offres candidates | Évaluées (cache compris) | Appels | Jetons moyens "
+            "par appel (entrée / sortie) | Temps par appel |",
+            "|---|---|---|---|---|---|",
+        ]
+        for r in llm_rows:
+            if r.llm_calls:
+                tokens = (
+                    f"{r.prompt_tokens / r.llm_calls:.0f} / {r.completion_tokens / r.llm_calls:.0f}"
+                )
+                seconds = f"{r.seconds_per_call:.2f} s" if r.seconds_per_call is not None else "n/d"
+            else:
+                tokens, seconds = "non mesuré (évaluations déjà en cache)", "non mesuré"
+            lines.append(
+                f"| `{r.name}` | {r.llm_candidates} | {r.llm_assessed} | {r.llm_calls} | "
+                f"{tokens} | {seconds} |"
+            )
+        lines += [
+            "",
+            "Activation par défaut de l'étage LLM seulement si `hybrid+llm` dépasse `hybrid` "
+            "au-delà de l'intervalle de confiance sur `precision@10` ou `nDCG@10` (voir les "
+            "comparaisons ciblées ci-dessus).",
+        ]
+    for note in result.notes:
+        lines += ["", f"> {note}"]
     lines += [
         "",
         "Coût par exécution : le tarif des fournisseurs n'est pas renseigné ici (non vérifié) ; "
-        "le coût d'un fournisseur `local` est nul, celui de `bedrock` se déduit du nombre "
-        "d'offres plongées par exécution et du tarif en vigueur.",
+        "le coût d'un fournisseur `local` est nul, celui de `bedrock` ou d'OpenRouter se déduit "
+        "du nombre d'appels et de jetons ci-dessus et du tarif en vigueur.",
         "",
         "## Limites",
         "",
-        "- `hybrid+llm` n'est pas évalué (lot M3).",
+        "- `hybrid+llm` n'est évalué que si des modèles OpenRouter sont configurés "
+        "(`match.llm.model`, `match.evaluation.llm_models`) et la clé disponible.",
         "- Les annotations sont conservées d'une version du profil à l'autre : elles ne sont "
         "revues qu'à la demande.",
         "- Les décisions (modèle par défaut, poids, seuil `min_score`) se reportent dans la spec "

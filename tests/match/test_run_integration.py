@@ -2,6 +2,7 @@
 
 import sqlite3
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -282,3 +283,166 @@ def test_digest_command_with_an_unreadable_profile_falls_back_with_a_note(
     )
     assert result.exit_code == 0
     assert "profil illisible" in out.read_text()
+
+
+# --- étage LLM dans `radar run` -------------------------------------------------------------------
+
+
+def with_llm(e: Env, monkeypatch: pytest.MonkeyPatch, judge: Any, extra: str = "") -> None:
+    """Active l'étage LLM (modèle fictif) et remplace le client OpenRouter par ``judge``."""
+    import vigie.match.judge  # noqa: F401  (inscrit les fournisseurs)
+    from vigie.match.judge import base as judge_base
+
+    e.config.write_text(
+        e.config.read_text().replace(
+            "  digest: { min_score: 40 }",
+            "  digest: { min_score: 40 }\n"
+            f"  llm: {{ enabled: true, model: fournisseur/modele{extra} }}",
+        )
+    )
+    monkeypatch.setitem(judge_base.REGISTRY, "openrouter", lambda cfg, settings: judge)
+
+
+def test_llm_stage_reorders_the_digest_and_reports_counters_only(
+    menv: Env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.match.llm_helpers import FakeJudge, assessment
+
+    judge = FakeJudge(script=[assessment(30, "passer"), assessment(95, "postuler"), assessment(10)])
+    with_llm(menv, monkeypatch, judge)
+    source(monkeypatch, menv)
+    result = menv.run()
+    assert result.exit_code == 0, result.output
+    assert (
+        "étage LLM : candidates=3 en cache=0 évaluées=3 invalides=0 jetons=1500/300"
+        in result.output
+    )
+    assert "appels LLM=3" in result.output
+    [digest] = menv.sender.digests
+    assert [i.uid for i in digest.items] == ["adzuna:B"]  # 95 > seuil ; A passe à 30
+    assert digest.items[0].recommendation == "postuler" and digest.items[0].score == 95
+    assert "match:llm : candidates 3, évaluées 3" in "\n".join(
+        line.text for line in digest.run_lines
+    )
+    for forbidden in ("Ingénieur IA", "Comptable", "Développeur", "postuler", "python"):
+        assert forbidden not in result.output  # compteurs seulement
+    with sqlite3.connect(menv.db) as conn:
+        row = conn.execute(
+            "SELECT fetched, new, duplicates, filtered, errors FROM run_sources "
+            "WHERE source = 'match:llm'"
+        ).fetchone()
+        calls = conn.execute("SELECT COUNT(*), SUM(prompt_tokens) FROM llm_calls").fetchone()
+        status = conn.execute("SELECT status FROM runs").fetchone()[0]
+    assert row == (3, 3, 0, 0, 0) and calls == (3, 1500) and status == "success"
+
+
+def test_llm_outage_exits_6_keeps_the_hybrid_order_and_the_digest_goes_out(
+    menv: Env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.match.llm_helpers import FakeJudge
+    from vigie.match.judge.base import JudgeUnavailable
+
+    judge = FakeJudge(
+        script=[JudgeUnavailable("OpenRouter : crédits insuffisants sur le compte (HTTP 402)")]
+    )
+    with_llm(menv, monkeypatch, judge)
+    source(monkeypatch, menv)
+    result = menv.run()
+    assert result.exit_code == 6, result.output
+    assert "ÉCHEC (JudgeUnavailable : OpenRouter : crédits insuffisants" in result.output
+    assert "score hybride conservé" in result.output
+    [digest] = menv.sender.digests
+    assert digest.scored and [i.uid for i in digest.items] == ["adzuna:A"]  # tri hybride
+    assert "Étage LLM ignoré" in digest.note
+    assert "offres à notifier : 0" in result.output
+
+
+def test_missing_openrouter_key_is_a_clear_llm_failure_not_a_crash(
+    menv: Env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import vigie.match.judge  # noqa: F401
+
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    menv.config.write_text(
+        menv.config.read_text().replace(
+            "  digest: { min_score: 40 }",
+            "  digest: { min_score: 40 }\n  llm: { enabled: true, model: fournisseur/modele }",
+        )
+    )
+    source(monkeypatch, menv)
+    result = menv.run()
+    assert result.exit_code == 6
+    assert "OPENROUTER_API_KEY" in result.output
+    assert len(menv.sender.digests) == 1 and menv.sender.digests[0].scored
+
+
+def test_budget_message_when_the_call_limit_is_reached(
+    menv: Env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.match.llm_helpers import FakeJudge
+
+    judge = FakeJudge()
+    with_llm(menv, monkeypatch, judge, ", max_calls_per_run: 1")
+    source(monkeypatch, menv)
+    result = menv.run()
+    assert result.exit_code == 0, result.output  # le budget n'est pas une panne
+    assert "budget atteint" in result.output and len(judge.seen) == 1
+
+
+def test_delivery_failure_takes_priority_over_an_llm_failure(
+    menv: Env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.match.llm_helpers import FakeJudge
+    from vigie.match.judge.base import JudgeUnavailable
+
+    with_llm(menv, monkeypatch, FakeJudge(script=[JudgeUnavailable("x")]))
+    menv.sender.fail = True
+    source(monkeypatch, menv)
+    assert menv.run().exit_code == 4  # 4 > 6
+
+
+def test_dry_run_runs_the_llm_stage_on_the_memory_copy_only(
+    menv: Env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.match.llm_helpers import FakeJudge
+
+    judge = FakeJudge()
+    with_llm(menv, monkeypatch, judge)
+    source(monkeypatch, menv)
+    result = menv.run("--dry-run")
+    assert result.exit_code == 0, result.output
+    assert "étage LLM : candidates=3" in result.output and len(judge.seen) == 3
+    assert not menv.db.exists() and menv.sender.digests == []
+
+
+def test_digest_command_shows_stored_llm_scores(
+    menv: Env, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from typer.testing import CliRunner
+
+    from tests.match.llm_helpers import FakeJudge, assessment
+
+    with_llm(
+        menv,
+        monkeypatch,
+        FakeJudge(script=[assessment(30, "passer"), assessment(95, "postuler"), assessment(10)]),
+    )
+    source(monkeypatch, menv)
+    menv.run("--no-email")
+    out = tmp_path / "digest.md"
+    result = CliRunner().invoke(
+        cli.root,
+        [
+            "radar",
+            "digest",
+            "--config",
+            str(menv.config),
+            "--db",
+            str(menv.db),
+            "--output",
+            str(out),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    text = out.read_text()
+    assert "recommandation : postuler" in text and "score 95/100" in text

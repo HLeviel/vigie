@@ -9,6 +9,7 @@ Ce module ne marque rien comme notifié : c'est l'envoi réussi (étape 8) ou l'
 ``--mark-notified`` de la CLI qui le fait.
 """
 
+import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, replace
@@ -20,7 +21,7 @@ from jinja2 import Environment, FileSystemLoader
 from pydantic import ValidationError
 
 from vigie.match.scoring import ScoreDetails
-from vigie.match.store import ScoreStore, ScoringKey
+from vigie.match.store import LlmCallStore, ScoreStore, ScoringKey
 from vigie.radar.config import DigestConfig
 from vigie.radar.models import ContractType, Offer
 from vigie.radar.store import Store
@@ -114,6 +115,7 @@ class DigestItem:
     found_skills: tuple[str, ...] = ()
     missing_skills: tuple[str, ...] = ()
     low_confidence: bool = False
+    recommendation: str = ""  # étage LLM : postuler, à voir, passer
 
     @classmethod
     def from_offer(cls, offer: Offer) -> "DigestItem":
@@ -130,7 +132,9 @@ class DigestItem:
             suspicious=offer.suspicious,
         )
 
-    def with_score(self, score: float, details: ScoreDetails) -> "DigestItem":
+    def with_score(
+        self, score: float, details: ScoreDetails, recommendation: str = ""
+    ) -> "DigestItem":
         """Ajoute le score et l'explication (2 compétences trouvées et 1 manquante au plus)."""
         found = [*details.found_must_have, *details.found_nice_to_have][:2]
         return replace(
@@ -139,6 +143,7 @@ class DigestItem:
             found_skills=tuple(clean_text(s, 40) for s in found),
             missing_skills=tuple(clean_text(s, 40) for s in details.missing_must_have[:1]),
             low_confidence=details.confidence == "faible",
+            recommendation=clean_text(recommendation, 20),
         )
 
     def meta_parts(self, escape: Callable[[str], str] = lambda text: text) -> list[str]:
@@ -146,6 +151,8 @@ class DigestItem:
         parts = [escape(self.company), escape(self.location), self.contract, self.salary]
         parts = [p for p in parts if p]
         scoring = [f"score {self.score}/100"] if self.score is not None else []
+        if self.recommendation:
+            scoring.append(f"recommandation : {self.recommendation}")
         if self.low_confidence:
             scoring.append("confiance faible")
         return [*scoring, *parts, f"publiée le {self.date}", f"source : {escape(self.source)}"]
@@ -174,9 +181,18 @@ class SourceSummary:
     errors: int
     failed: bool
     error_type: str | None = None
+    llm_usage: tuple[int, int, int] | None = None  # (appels, jetons d'entrée, jetons de sortie)
 
     def render(self, escape: Callable[[str], str] = lambda text: text) -> str:
-        if self.source == "match":  # ligne du scoring : mêmes colonnes, autre sens
+        if self.source == "match:llm":  # étage LLM : compteurs et jetons seulement
+            line = (
+                f"match:llm : candidates {self.fetched}, évaluées {self.new}, "
+                f"en cache {self.duplicates}, invalides {self.filtered}"
+            )
+            if self.llm_usage is not None:
+                calls, tokens_in, tokens_out = self.llm_usage
+                line += f", appels {calls}, jetons {tokens_in} en entrée et {tokens_out} en sortie"
+        elif self.source == "match":  # ligne du scoring : mêmes colonnes, autre sens
             line = (
                 f"match : à scorer {self.fetched}, scorées {self.new}, "
                 f"exclues par préférence {self.filtered}"
@@ -233,7 +249,7 @@ class Digest:
     def title(self) -> str:
         if not self.items:
             if self.run is not None and not any(
-                s.failed for s in self.run.sources if s.source != "match"
+                s.failed for s in self.run.sources if not s.source.startswith("match")
             ):
                 return "Vigie : alerte, le scoring a échoué"
             return "Vigie : alerte, une source a échoué"
@@ -297,6 +313,9 @@ def _run_summary(store: Store) -> RunSummary | None:
                 errors=int(s["errors"]),
                 failed=s["error_message"] is not None,
                 error_type=str(s["error_message"]).split(":", 1)[0] if s["error_message"] else None,
+                llm_usage=LlmCallStore(store).totals(str(last["run_id"]))
+                if s["source"] == "match:llm"
+                else None,
             )
             for s in last["sources"]
         ),
@@ -306,14 +325,27 @@ def _run_summary(store: Store) -> RunSummary | None:
 SCORING_UNAVAILABLE = "Scoring indisponible ou incomplet : offres triées par date, sans score."
 
 
+def _llm_verdict(details_json: str) -> str | None:
+    """Recommandation d'une évaluation LLM stockée ; ``None`` si elle est illisible (l'offre garde
+    alors son score hybride)."""
+    try:
+        data = json.loads(details_json)
+        recommendation = data["assessment"]["recommendation"]
+    except (ValueError, KeyError, TypeError):
+        return None
+    return recommendation if recommendation in {"postuler", "à voir", "passer"} else None
+
+
 def _scored_items(
     offers: list[Offer], scoring: ScoringKey, store: Store
 ) -> tuple[list[DigestItem], list[str]] | None:
     """Offres triées par score décroissant (celles sous le seuil à part) ; ``None`` si une offre
     n'a pas de score valide : le digest retombe alors sur l'ordre par date."""
-    stored = ScoreStore(store).get_many([o.uid for o in offers], scoring)
+    uids = [o.uid for o in offers]
+    stored = ScoreStore(store).get_many(uids, scoring)
     if len(stored) != len(offers):
         return None
+    llm = ScoreStore(store).get_many(uids, scoring.llm) if scoring.llm else {}
     ranked: list[tuple[float, Offer, DigestItem]] = []
     below: list[str] = []
     for offer in offers:
@@ -322,10 +354,16 @@ def _scored_items(
             details = ScoreDetails.model_validate_json(details_json)
         except ValidationError:
             return None
+        recommendation = ""
+        if offer.uid in llm and not details.excluded:  # score final : celui du LLM s'il existe
+            verdict = _llm_verdict(llm[offer.uid][1])
+            if verdict is not None:
+                score, recommendation = llm[offer.uid][0], verdict
         if details.excluded or score < scoring.min_score:
             below.append(offer.uid)
         else:
-            ranked.append((score, offer, DigestItem.from_offer(offer).with_score(score, details)))
+            item = DigestItem.from_offer(offer).with_score(score, details, recommendation)
+            ranked.append((score, offer, item))
     ranked.sort(key=lambda r: (-r[0], -r[1].published_at.timestamp(), r[1].uid))
     return [item for _, _, item in ranked], below
 
@@ -336,12 +374,14 @@ def build_digest(
     now: datetime,
     scoring: ScoringKey | None = None,
     note: str | None = None,
+    llm_note: str | None = None,
 ) -> Digest:
     """Digest des offres à notifier.
 
     Sans ``scoring`` (module match absent ou désactivé) : de la plus récente à la plus ancienne.
     Avec ``scoring`` : triées par score ; si une offre n'a pas de score, retour à l'ordre par date
-    avec une mention (une panne du scoring ne bloque jamais le digest).
+    avec une mention (une panne du scoring ne bloque jamais le digest). ``llm_note`` : mention du
+    pied quand seul l'étage LLM a été ignoré (les offres restent triées par score hybride).
     """
     run = _run_summary(store)
     if scoring is not None and note is None:
@@ -358,6 +398,7 @@ def build_digest(
                 below_threshold=len(below),
                 below_uids=tuple(below),
                 scored=True,
+                note=llm_note or "",
             )
         note = SCORING_UNAVAILABLE
     offers = store.pending_offers(limit=config.max_items)

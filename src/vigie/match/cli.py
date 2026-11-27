@@ -25,6 +25,8 @@ from vigie.match.evaluation.dataset import (
 )
 from vigie.match.evaluation.report import render_markdown, render_svg
 from vigie.match.evaluation.runner import evaluate
+from vigie.match.judge.base import Judge, JudgeError, build_judge
+from vigie.match.judge.prompt import PROMPT_VERSION
 from vigie.match.profile import Profile, ProfileError, load_profile_file
 from vigie.match.scoring import scoring_key
 from vigie.match.store import EmbeddingStore, LabelStore
@@ -85,14 +87,10 @@ def check(config: ConfigOption = None) -> None:
 
     settings = Settings()
     if match.llm.enabled:
-        typer.echo("étage LLM : activé dans la configuration, pas encore implémenté (lot M3)")
-        if match.llm.provider == "anthropic":
-            missing = settings.missing(["llm_anthropic"])
-            if missing:
-                raise _fail("étage LLM : variables manquantes : " + ", ".join(missing))
-            typer.echo("secrets : présents")
-        else:
-            typer.echo("étage LLM : authentification par OIDC (rien à vérifier ici)")
+        missing = settings.missing(["llm_openrouter"])
+        if missing:
+            raise _fail("étage LLM : variables manquantes : " + ", ".join(missing))
+        typer.echo(f"étage LLM : activé (OpenRouter, prompt {PROMPT_VERSION}), secrets : présents")
     else:
         typer.echo("étage LLM : désactivé")
 
@@ -311,6 +309,23 @@ def _embedders(match: MatchConfig) -> list[Embedder]:
     return built
 
 
+def _judges(match: MatchConfig) -> list[Judge]:
+    """Un juge par modèle OpenRouter configuré (``llm.model`` puis ``evaluation.llm_models``).
+
+    Sans modèle ou sans clé, les variantes LLM sont simplement ignorées (message, pas d'erreur)."""
+    models = [m for m in dict.fromkeys([match.llm.model or "", *match.evaluation.llm_models]) if m]
+    if not models:
+        return []
+    settings = Settings()
+    if settings.missing(["llm_openrouter"]):
+        typer.echo("variantes hybrid+llm ignorées : OPENROUTER_API_KEY absente")
+        return []
+    try:
+        return [build_judge(match.llm, settings, model=model) for model in models]
+    except JudgeError as exc:
+        raise _fail(f"étage LLM : {exc}") from None
+
+
 @app.command("eval")
 def eval_(
     config: ConfigOption = None,
@@ -319,6 +334,13 @@ def eval_(
         Path | None,
         typer.Option("--output", help="Rapport Markdown (le SVG est écrit à côté)."),
     ] = None,
+    llm: Annotated[
+        bool,
+        typer.Option(
+            "--llm/--no-llm",
+            help="Évalue aussi hybrid+llm (modèles OpenRouter configurés ; appels payants).",
+        ),
+    ] = True,
 ) -> None:
     """Évalue les variantes de classement sur le jeu annoté et écrit un rapport publiable."""
     match, profile = _match_setup(config)
@@ -336,8 +358,11 @@ def eval_(
                 "utiliser `vigie match label`"
             )
         embedders = _embedders(match)
+        judges = _judges(match) if llm else []
         try:
-            result = evaluate(profile, match, items, embedders, EmbeddingStore(store))
+            result = evaluate(
+                profile, match, items, embedders, EmbeddingStore(store), judges=judges, db=store
+            )
         except EmbedderError as exc:
             raise _fail(f"embeddings : {exc}") from None
         store.commit()

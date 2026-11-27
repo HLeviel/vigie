@@ -53,6 +53,9 @@ jobs:
         run: mkdir eval && vigie match eval --config config/radar.yaml --output "eval/match-$(date -u +%F).md"
         env:
           VIGIE_STATE_BUCKET: ${{ secrets.VIGIE_STATE_BUCKET }}
+          # Variantes hybrid+llm (OpenRouter) : appels payants, un par offre du top N et par modèle.
+          # Absente, la clé fait ignorer ces variantes (message) sans faire échouer l'évaluation.
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: rapport-evaluation

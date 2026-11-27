@@ -3,6 +3,7 @@
 import csv
 import io
 import stat
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -38,7 +39,12 @@ def write_csv(path: Path, rows: list[list[str]], delimiter: str = ";", bom: bool
 
 def many_offers(count: int = 30) -> list:  # type: ignore[type-arg]
     return [
-        make_offer(source_id=f"{i:02d}", title=f"Offre numéro {i:02d}", description=f"texte {i}")
+        make_offer(
+            source_id=f"{i:02d}",
+            title=f"Offre numéro {i:02d}",
+            description=f"texte {i}",
+            published_at=datetime(2026, 11, 19, 8, 0, tzinfo=UTC),
+        )
         for i in range(count)
     ]
 

@@ -8,7 +8,7 @@ Aucun secret n'a de valeur par défaut : une variable absente vaut ``None``.
 from collections.abc import Iterable
 from pathlib import Path
 
-from pydantic import SecretStr
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Variables requises par source ou fonctionnalité activée (noms d'environnement).
@@ -18,7 +18,7 @@ REQUIRED_BY_FEATURE: dict[str, tuple[str, ...]] = {
     "imap": ("IMAP_HOST", "IMAP_USER", "IMAP_PASSWORD", "IMAP_FOLDER"),
     "email": ("SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_PASSWORD", "DIGEST_TO"),
     "state_s3": ("VIGIE_STATE_BUCKET",),
-    "llm_anthropic": ("ANTHROPIC_API_KEY",),
+    "llm_openrouter": ("OPENROUTER_API_KEY",),
 }
 
 
@@ -58,14 +58,20 @@ class Settings(BaseSettings):
     smtp_password: SecretStr | None = None
     digest_to: SecretStr | None = None
 
-    # Étage LLM de match (lot M3, fournisseur anthropic)
-    anthropic_api_key: SecretStr | None = None
+    # Étage LLM de match (lot M3, OpenRouter)
+    openrouter_api_key: SecretStr | None = None
 
     # Chemin de la base SQLite (non secret) ; défaut : ~/.local/share/vigie/radar.db
     vigie_db_path: Path | None = None
 
     # État persistant (lot M2)
     vigie_state_bucket: str | None = None
+
+    @field_validator("openrouter_api_key", mode="before")
+    @classmethod
+    def _blank_key_is_absent(cls, value: object) -> object:
+        """Un secret GitHub non défini arrive comme une chaîne vide : la clé est alors absente."""
+        return None if isinstance(value, str) and not value.strip() else value
 
     def missing(self, features: Iterable[str]) -> list[str]:
         """Noms des variables absentes pour les fonctionnalités données."""

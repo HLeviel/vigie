@@ -52,6 +52,11 @@ def test_model_is_mandatory() -> None:
         "match: { embeddings: { provider: local, model: m }, penalties: { remote: 101 } }",
         "match: { embeddings: { provider: local, model: m }, digest: { min_score: 120 } }",
         "match: { embeddings: { provider: local, model: m }, llm: { enabled: true } }",
+        "match: { embeddings: { provider: local, model: m }, llm: { provider: anthropic } }",
+        "match: { embeddings: { provider: local, model: m }, llm: { model: sans-fournisseur } }",
+        "match: { embeddings: { provider: local, model: m }, llm: { temperature: 3 } }",
+        "match: { embeddings: { provider: local, model: m }, llm: { max_tokens: 0 } }",
+        "match: { embeddings: { provider: local, model: m }, llm: { max_calls_per_run: 0 } }",
         "match: { embeddings: { provider: local, model: m }, inconnu: 1 }",
     ],
 )
@@ -70,6 +75,8 @@ def test_defaults() -> None:
     assert cfg.digest.min_score == 40
     assert cfg.llm.enabled is False
     assert (cfg.llm.top_n, cfg.llm.max_calls_per_run) == (10, 15)
+    assert (cfg.llm.provider, cfg.llm.temperature, cfg.llm.max_tokens) == ("openrouter", 0, 800)
+    assert cfg.llm.max_total_tokens_per_run == 60_000
 
 
 def write_setup(tmp_path: Path, match: str, profile: Path | None = EXAMPLE_PROFILE) -> Path:
@@ -147,30 +154,41 @@ def test_check_with_missing_or_invalid_profile(
     assert "secret-confidentiel" not in result.output
 
 
-def test_check_llm_anthropic_requires_its_key(
+def test_check_llm_openrouter_requires_its_key(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     clear_env(monkeypatch, tmp_path)
-    llm = "  llm: { enabled: true, provider: anthropic, model: modele-fictif }\n"
+    llm = "  llm: { enabled: true, model: modele-fictif/un }\n"
     cfg = write_setup(tmp_path, EMB + llm)
     result = runner.invoke(root, ["match", "check", "--config", str(cfg)])
     assert result.exit_code == 1
-    assert "ANTHROPIC_API_KEY" in result.output
-    assert "pas encore implémenté" in result.output
+    assert "OPENROUTER_API_KEY" in result.output
 
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-valeur-secrete")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-valeur-secrete")
     ok = runner.invoke(root, ["match", "check", "--config", str(cfg)])
-    assert ok.exit_code == 0
-    assert "sk-ant-valeur-secrete" not in ok.output
+    assert ok.exit_code == 0, ok.output
+    assert "OpenRouter" in ok.output and "prompt v1" in ok.output
+    assert "sk-or-valeur-secrete" not in ok.output and "modele-fictif" not in ok.output
 
 
-def test_check_llm_bedrock_needs_no_secret(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_check_llm_blank_key_counts_as_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Un secret GitHub non défini arrive comme une chaîne vide."""
     clear_env(monkeypatch, tmp_path)
-    llm = "  llm: { enabled: true, provider: bedrock, model: modele-fictif }\n"
-    cfg = write_setup(tmp_path, EMB + llm)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "  ")
+    cfg = write_setup(tmp_path, EMB + "  llm: { enabled: true, model: modele-fictif/un }\n")
     result = runner.invoke(root, ["match", "check", "--config", str(cfg)])
-    assert result.exit_code == 0
-    assert "OIDC" in result.output
+    assert result.exit_code == 1 and "OPENROUTER_API_KEY" in result.output
+
+
+def test_check_llm_enabled_without_model_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    clear_env(monkeypatch, tmp_path)
+    cfg = write_setup(tmp_path, EMB + "  llm: { enabled: true }\n")
+    result = runner.invoke(root, ["match", "check", "--config", str(cfg)])
+    assert result.exit_code == 1 and "model est obligatoire" in result.output
 
 
 def test_match_makes_no_network_call(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

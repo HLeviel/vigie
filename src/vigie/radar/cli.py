@@ -213,15 +213,24 @@ def run(
             result = run_pipeline(cfg, settings, store, plan, since=since_utc)
             match_report: MatchReport | None = None
             if cfg.match is not None and cfg.match.enabled:
-                match_report = run_match(cfg.match, store)
+                match_report = run_match(cfg.match, store, run_id=result.report.run_id)
                 store.add_run_source(result.report.run_id, match_report.as_source_report())
+                llm_row = match_report.llm_source_report()
+                if llm_row is not None:
+                    store.add_run_source(result.report.run_id, llm_row)
                 store.commit()
             delivery = "disabled"
             if not dry_run and can_send:
                 scoring, scoring_note = _scoring_key(cfg)
                 if match_report is not None and match_report.failed:
                     scoring, scoring_note = None, SCORING_UNAVAILABLE  # panne : tri par date
-                digest = build_digest(store, cfg.digest, now, scoring, scoring_note)
+                llm_note = (
+                    "Étage LLM ignoré pour cette exécution : les offres restent triées par score "
+                    "hybride."
+                    if match_report is not None and match_report.llm_failed
+                    else None
+                )
+                digest = build_digest(store, cfg.digest, now, scoring, scoring_note, llm_note)
                 if not digest.should_send:
                     delivery = "nothing"
                 else:
@@ -262,7 +271,7 @@ def run(
     if dry_run:
         typer.echo("dry-run : rien n'a été écrit, aucun email envoyé")
     code = result.exit_code
-    if match_report is not None and match_report.failed:
+    if match_report is not None and match_report.any_failure:
         code = EXIT_MATCH
     if delivery.startswith("failed"):
         code = EXIT_DELIVERY
@@ -280,6 +289,8 @@ SAFE_ERROR_TYPES = frozenset(
         "StateSyncError",
         "MissingSettingsError",
         "EmbedderError",  # messages fixes, sans texte d'offre ni message du fournisseur
+        "JudgeUnavailable",  # messages fixes : code HTTP et noms de paramètres seulement
+        "JudgeError",
         "ProfileError",  # chemins de champs seulement, jamais une valeur
     }
 )
@@ -298,10 +309,22 @@ def failure_reason(error_message: str | None) -> str:
 def _describe_match(report: MatchReport) -> str:
     if report.failed:
         return "match : ÉCHEC" + failure_reason(report.error_message) + ", digest trié par date"
-    return (
+    line = (
         f"{MATCH_SOURCE} : à scorer={report.pending} scorées={report.scored} "
         f"exclues={report.excluded} appels LLM={report.llm_calls}"
     )
+    llm = report.llm
+    if llm is None:
+        return line
+    line += (
+        f"\nétage LLM : candidates={llm.candidates} en cache={llm.cached} évaluées={llm.assessed} "
+        f"invalides={llm.invalid} jetons={llm.prompt_tokens}/{llm.completion_tokens}"
+    )
+    if llm.budget_reached:
+        line += " (budget atteint : les offres restantes gardent leur score hybride)"
+    if llm.failed:
+        line += " ÉCHEC" + failure_reason(llm.error_message) + ", score hybride conservé"
+    return line
 
 
 def _describe_delivery(delivery: str, dry_run: bool, send_email: bool, not_configured: bool) -> str:

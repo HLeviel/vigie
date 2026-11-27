@@ -85,7 +85,12 @@ def test_item_fields() -> None:
 
 
 def test_unknown_contract_company_and_location_are_omitted() -> None:
-    offer = make_offer(company=None, location_label=None, contract_type=ContractType.AUTRE)
+    offer = make_offer(
+        company=None,
+        location_label=None,
+        contract_type=ContractType.AUTRE,
+        published_at=datetime(2026, 11, 19, 8, 0, tzinfo=UTC),
+    )
     assert DigestItem.from_offer(offer).meta == "publiée le 19/11/2026 · source : adzuna"
 
 
@@ -212,7 +217,13 @@ def test_plural_titles() -> None:
 
 
 def test_markdown_layout() -> None:
-    store = store_with(make_offer(title="Data Engineer", contract_type=ContractType.CDD))
+    store = store_with(
+        make_offer(
+            title="Data Engineer",
+            contract_type=ContractType.CDD,
+            published_at=datetime(2026, 11, 19, 8, 0, tzinfo=UTC),
+        )
+    )
     add_run(store, SourceReport(source="adzuna", fetched=2, new=1, duplicates=1))
     md = render_markdown(digest_of(store))
     assert md.startswith("# Vigie : 1 nouvelle offre\n")
